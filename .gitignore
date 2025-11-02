@@ -1,0 +1,25 @@
+# Ambientes Virtuais
+venv/
+env/
+.venv/
+.env/
+
+# Cache do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Arquivos de IDEs e Editores
+.vscode/
+.idea/
+*.swp
+
+# Arquivos de Distribuição/Build
+build/
+dist/
+*.egg-info/
+
+# ---- IMPORTANTE ----
+# Arquivo de dados do usuário. Não inclua seu histórico pessoal no repositório!
+meu_diario_operacoes.csv
