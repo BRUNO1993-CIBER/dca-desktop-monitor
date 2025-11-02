@@ -50,8 +50,8 @@ Siga os passos abaixo para executar o projeto em sua máquina local.
 
 1.  **Clone o repositório:**
     ```bash
-    git clone https://github.com/BRUNO1993-CIBER/Bruno-Machado.git
-    cd Bruno-Machado
+    git clone https://github.com/BRUNO1993-CIBER/dca-desktop-monitor.git
+    cd dca-desktop-monitor
     ```
 
 2.  **Crie e ative um ambiente virtual (recomendado):**
