@@ -203,7 +203,6 @@ class PriceManager:
         return self.precos_cache.get(moeda)
 
 class AnalysisEngine:
-
     @staticmethod
     def calcular_portfolio(operacoes: List[Dict], precos_atuais: Dict[str, float]) -> Dict:
         if not operacoes:
@@ -228,16 +227,18 @@ class AnalysisEngine:
         
         for moeda, ops in ops_por_moeda.items():
             analise_moeda = AnalysisEngine._analisar_moeda(ops, precos_atuais.get(moeda, 0))
-            resultado[moeda] = analise_moeda
-            
-            totais['investido_liquido'] += analise_moeda['custo_posicao_final']
-            totais['realizado'] += analise_moeda['lucro_realizado']
-            totais['nao_realizado'] += analise_moeda['lucro_nao_realizado']
-            totais['valor_atual'] += analise_moeda['valor_atual_posicao']
+
+            if analise_moeda.get('valor_atual_posicao', 0) > 0.01 or abs(analise_moeda.get('lucro_realizado', 0)) > 0.01:
+                resultado[moeda] = analise_moeda
+                
+                totais['investido_liquido'] += analise_moeda['custo_posicao_final']
+                totais['realizado'] += analise_moeda['lucro_realizado']
+                totais['nao_realizado'] += analise_moeda['lucro_nao_realizado']
+                totais['valor_atual'] += analise_moeda['valor_atual_posicao']
         
         totais['valor_atual'] += saldo_caixa_usdt
         
-        if saldo_caixa_usdt > 0:
+        if saldo_caixa_usdt > 0.01: 
             resultado['USDT (Caixa)'] = {
                 'quantidade_final': saldo_caixa_usdt,
                 'valor_atual_posicao': saldo_caixa_usdt,
@@ -316,53 +317,37 @@ class AnalysisEngine:
         }
     
     @staticmethod
-    def calcular_distribuicao_portfolio(operacoes: List[Dict]) -> Dict:
+    def calcular_distribuicao_portfolio(operacoes: List[Dict], precos_atuais: Dict[str, float]) -> Dict:
         if not operacoes:
-            return {'distribuicao': {}, 'total_investido': 0}
+            return {'distribuicao': {}, 'total_valor_portfolio': 0}
 
         saldo_info = AnalysisEngine.calcular_saldo_usdt(operacoes)
         saldo_usdt = saldo_info['saldo_atual']
 
         ops_por_moeda = defaultdict(list)
         for op in sorted(operacoes, key=lambda x: x['Data']):
+            if op['Moeda'] == 'USDT':
+                continue
             ops_por_moeda[op['Moeda']].append(op)
         
         distribuicao = {}
-        total_investido_crypto = 0
+        total_valor_crypto = 0
         
         for moeda, ops in ops_por_moeda.items():
-            if moeda == 'USDT':
-                continue
+            analise = AnalysisEngine._analisar_moeda(ops, precos_atuais.get(moeda, 0))
+            quantidade_final = analise.get('quantidade_final', 0)
+            valor_de_mercado = analise.get('valor_atual_posicao', 0)
 
-            custo_total = Decimal('0')
-            quantidade_total = Decimal('0')
-            
-            for op in ops:
-                valor = Decimal(str(op['Valor_USDT']))
-                qtd = Decimal(str(op['Quantidade']))
-                
-                if op['Operacao'] == 'compra':
-                    custo_total += valor
-                    quantidade_total += qtd
-                elif op['Operacao'] == 'venda':
-                    if quantidade_total > 0:
-                        pmc_atual = custo_total / quantidade_total if quantidade_total > 0 else Decimal('0')
-                        custo_da_venda = qtd * pmc_atual
-                        custo_total -= custo_da_venda
-                        quantidade_total -= qtd
-            
-            if quantidade_total > Decimal('1e-9'):
-                valor_investido = float(custo_total)
-                if valor_investido > 0:
-                    distribuicao[moeda] = {
-                        'valor_atual': valor_investido,
-                        'quantidade': float(quantidade_total)
-                    }
-                    total_investido_crypto += valor_investido
+            if valor_de_mercado > 0.01:
+                distribuicao[moeda] = {
+                    'valor_atual': valor_de_mercado,
+                    'quantidade': quantidade_final
+                }
+                total_valor_crypto += valor_de_mercado
         
-        valor_total_portfolio = total_investido_crypto + saldo_usdt
+        valor_total_portfolio = total_valor_crypto + saldo_usdt
 
-        if saldo_usdt > 0:
+        if saldo_usdt > 0.01: 
             distribuicao['USDT'] = {
                 'valor_atual': saldo_usdt,
                 'quantidade': saldo_usdt
@@ -376,7 +361,7 @@ class AnalysisEngine:
         
         return {
             'distribuicao': distribuicao,
-            'total_investido': total_investido_crypto
+            'total_investido': total_valor_crypto 
         }
     
     @staticmethod
@@ -517,7 +502,108 @@ class PortfolioDCA:
         btn_excluir.pack(side=tk.LEFT, padx=5)
 
         self._atualizar_lista_edicao()
-        
+
+
+
+    def atualizar_distribuicao(self):
+            self.distribuicao_text.delete(1.0, tk.END)
+            
+            try:
+                operacoes = self.data_manager.carregar_operacoes()
+                if not operacoes:
+                    self.distribuicao_text.insert(tk.END, "📊 Nenhuma operação registrada ainda.\n\n")
+                    self.distribuicao_text.insert(tk.END, "Registre suas operações na aba '✍️ Registrar Operação' para ver a distribuição do seu portfólio!")
+                    return
+                
+                saldo_info = AnalysisEngine.calcular_saldo_usdt(operacoes)
+                saldo_atual = saldo_info['saldo_atual']
+                
+                preco_brl = self.price_manager.preco_brl
+                saldo_em_brl = saldo_atual * preco_brl
+
+                texto_saldo = f"Saldo: ${saldo_atual:,.2f} USDT"
+                if preco_brl > 0:
+                    texto_saldo += f" (≈ R$ {saldo_em_brl:,.2f})"
+                
+                self.saldo_usdt_label.config(text=texto_saldo)
+                
+                resultado_distribuicao = AnalysisEngine.calcular_distribuicao_portfolio(operacoes, self.price_manager.precos_cache)
+                self._exibir_distribuicao(resultado_distribuicao, saldo_info)
+                
+            except Exception as e:
+                logger.error(f"Erro ao calcular distribuição: {e}")
+                self.distribuicao_text.insert(tk.END, f"❌ Erro ao processar dados: {e}")
+
+    def ao_mudar_selecao_formulario(self, event=None):
+        """
+        Esta função é chamada sempre que a moeda ou o tipo de operação são alterados.
+        Ela chama as funções de atualização necessárias.
+        """
+        self.ao_selecionar_moeda(event)
+        self._atualizar_interface_venda(event)
+
+    def _atualizar_interface_venda(self, event=None):
+        """
+        Verifica se a operação é 'Venda' e mostra ou esconde o saldo e o botão 'Vender Tudo'.
+        """
+        moeda = self.combo_moeda.get()
+        operacao = self.combo_tipo.get()
+
+        if operacao == 'Venda' and moeda and moeda != 'USDT':
+            try:
+                operacoes = self.data_manager.carregar_operacoes()
+                portfolio = AnalysisEngine.calcular_portfolio(operacoes, self.price_manager.precos_cache)
+                
+                saldo_moeda = 0.0
+                if moeda in portfolio:
+                    saldo_moeda = portfolio[moeda].get('quantidade_final', 0)
+
+                self.label_saldo_venda.config(text=f"Saldo disponível: {saldo_moeda:.8f} {moeda}")
+                self.label_saldo_venda.grid()
+                self.btn_vender_tudo.grid()
+            except Exception as e:
+                logger.error(f"Erro ao buscar saldo para venda: {e}")
+                self.label_saldo_venda.grid_remove()
+                self.btn_vender_tudo.grid_remove()
+        else:
+            self.label_saldo_venda.grid_remove()
+            self.btn_vender_tudo.grid_remove()
+
+    def vender_tudo(self):
+        """
+        Preenche os campos de valor e preço para vender toda a posição da moeda selecionada.
+        """
+        moeda = self.combo_moeda.get()
+        if not moeda or moeda == 'USDT':
+            messagebox.showwarning("Ação inválida", "Selecione uma criptomoeda para vender.")
+            return
+
+        operacoes = self.data_manager.carregar_operacoes()
+        portfolio = AnalysisEngine.calcular_portfolio(operacoes, self.price_manager.precos_cache)
+
+        saldo_a_vender = 0.0
+        if moeda in portfolio:
+            saldo_a_vender = portfolio[moeda].get('quantidade_final', 0)
+
+        if saldo_a_vender < 1e-9: 
+             messagebox.showinfo("Saldo Insuficiente", f"Você não possui saldo de {moeda} para vender.")
+             return
+
+        preco_atual = self.price_manager.get_preco(moeda)
+        if not preco_atual or preco_atual <= 0:
+            messagebox.showerror("Erro", f"Não foi possível obter o preço atual de {moeda}.")
+            return
+
+        valor_total_usdt = saldo_a_vender * preco_atual
+
+        self.entry_valor.delete(0, tk.END)
+        self.entry_valor.insert(0, f"{valor_total_usdt:.4f}")
+
+        self.entry_preco.delete(0, tk.END)
+        self.entry_preco.insert(0, f"{preco_atual:.6f}")
+
+        self.calcular_quantidade()
+
     def _limpar_formulario_edicao(self):
         for header, entry in self.edicao_campos.items():
             entry.config(state='normal')
@@ -638,34 +724,44 @@ class PortfolioDCA:
         btn_salvar.pack(pady=30)
 
     def _criar_campos_formulario(self, parent):
-        ttk.Label(parent, text="Moeda:", font=("Arial", 11)).grid(row=0, column=0, sticky='w', pady=5)
-        self.combo_moeda = ttk.Combobox(parent, values=self.moedas_suportadas, width=20, font=("Arial", 11))
-        self.combo_moeda.grid(row=0, column=1, pady=5, padx=10)
-        self.combo_moeda.bind('<<ComboboxSelected>>', self.ao_selecionar_moeda)
-        
-        self.preco_atual_label = ttk.Label(parent, text="", font=("Arial", 10), foreground='blue')
-        self.preco_atual_label.grid(row=0, column=2, padx=10)
-        
-        ttk.Label(parent, text="Operação:", font=("Arial", 11)).grid(row=1, column=0, sticky='w', pady=5)
-        self.combo_tipo = ttk.Combobox(parent, values=["Compra", "Venda"], width=20, font=("Arial", 11))
-        self.combo_tipo.grid(row=1, column=1, pady=5, padx=10)
-        self.combo_tipo.set("Compra")
+            ttk.Label(parent, text="Moeda:", font=("Arial", 11)).grid(row=0, column=0, sticky='w', pady=5)
+            self.combo_moeda = ttk.Combobox(parent, values=self.moedas_suportadas, width=20, font=("Arial", 11))
+            self.combo_moeda.grid(row=0, column=1, pady=5, padx=10)
+            self.combo_moeda.bind('<<ComboboxSelected>>', self.ao_mudar_selecao_formulario)
+            
+            self.preco_atual_label = ttk.Label(parent, text="", font=("Arial", 10), foreground='blue')
+            self.preco_atual_label.grid(row=0, column=2, padx=10)
+            
+            ttk.Label(parent, text="Operação:", font=("Arial", 11)).grid(row=1, column=0, sticky='w', pady=5)
+            self.combo_tipo = ttk.Combobox(parent, values=["Compra", "Venda"], width=20, font=("Arial", 11))
+            self.combo_tipo.grid(row=1, column=1, pady=5, padx=10)
+            self.combo_tipo.set("Compra")
+            self.combo_tipo.bind('<<ComboboxSelected>>', self.ao_mudar_selecao_formulario)
 
-        ttk.Label(parent, text="Valor (USDT):", font=("Arial", 11)).grid(row=2, column=0, sticky='w', pady=5)
-        self.entry_valor = ttk.Entry(parent, width=22, font=("Arial", 11))
-        self.entry_valor.grid(row=2, column=1, pady=5, padx=10)
-        self.entry_valor.bind('<KeyRelease>', self.calcular_quantidade)
-        
-        self.quantidade_label = ttk.Label(parent, text="", font=("Arial", 10), foreground='gray')
-        self.quantidade_label.grid(row=2, column=2, padx=10)
-        
-        ttk.Label(parent, text="Preço Unitário:", font=("Arial", 11)).grid(row=3, column=0, sticky='w', pady=5)
-        self.entry_preco = ttk.Entry(parent, width=22, font=("Arial", 11))
-        self.entry_preco.grid(row=3, column=1, pady=5, padx=10)
-        self.entry_preco.bind('<KeyRelease>', self.calcular_quantidade)
+            ttk.Label(parent, text="Valor (USDT):", font=("Arial", 11)).grid(row=2, column=0, sticky='w', pady=5)
+            self.entry_valor = ttk.Entry(parent, width=22, font=("Arial", 11))
+            self.entry_valor.grid(row=2, column=1, pady=5, padx=10)
+            self.entry_valor.bind('<KeyRelease>', self.calcular_quantidade)
+            
+            self.quantidade_label = ttk.Label(parent, text="", font=("Arial", 10), foreground='gray')
+            self.quantidade_label.grid(row=2, column=2, padx=10)
+            
+            ttk.Label(parent, text="Preço Unitário:", font=("Arial", 11)).grid(row=3, column=0, sticky='w', pady=5)
+            self.entry_preco = ttk.Entry(parent, width=22, font=("Arial", 11))
+            self.entry_preco.grid(row=3, column=1, pady=5, padx=10)
+            self.entry_preco.bind('<KeyRelease>', self.calcular_quantidade)
 
-        btn_usar_preco = ttk.Button(parent, text="Usar Preço Atual", command=self.usar_preco_atual)
-        btn_usar_preco.grid(row=3, column=2, pady=5, padx=10, sticky='w')
+            btn_usar_preco = ttk.Button(parent, text="Usar Preço Atual", command=self.usar_preco_atual)
+            btn_usar_preco.grid(row=3, column=2, pady=5, padx=10, sticky='w')
+            
+            self.label_saldo_venda = ttk.Label(parent, text="", font=("Arial", 10, "bold"), foreground='darkblue')
+            self.label_saldo_venda.grid(row=4, column=0, columnspan=2, sticky='w', padx=5, pady=(10,0))
+
+            self.btn_vender_tudo = ttk.Button(parent, text="Vender Tudo", command=self.vender_tudo)
+            self.btn_vender_tudo.grid(row=4, column=2, pady=(10,0), padx=10, sticky='w')
+
+            self.label_saldo_venda.grid_remove()
+            self.btn_vender_tudo.grid_remove()
 
     def criar_aba_portfolio(self):
         frame = ttk.Frame(self.notebook, padding=10)
@@ -787,34 +883,53 @@ class PortfolioDCA:
         self.tree.tag_configure('compra', background='#e8f5e8')
         self.tree.tag_configure('venda', background='#ffe8e8')
 
-    def atualizar_distribuicao(self):
-        self.distribuicao_text.delete(1.0, tk.END)
-        
-        try:
-            operacoes = self.data_manager.carregar_operacoes()
-            if not operacoes:
-                self.distribuicao_text.insert(tk.END, "📊 Nenhuma operação registrada ainda.\n\n")
-                self.distribuicao_text.insert(tk.END, "Registre suas operações na aba '✍️ Registrar Operação' para ver a distribuição do seu portfólio!")
-                return
-            
-            saldo_info = AnalysisEngine.calcular_saldo_usdt(operacoes)
-            saldo_atual = saldo_info['saldo_atual']
-            
-            preco_brl = self.price_manager.preco_brl
-            saldo_em_brl = saldo_atual * preco_brl
+    @staticmethod
+    def calcular_distribuicao_portfolio(operacoes: List[Dict], precos_atuais: Dict[str, float]) -> Dict:
+        if not operacoes:
+            return {'distribuicao': {}, 'total_valor_portfolio': 0}
 
-            texto_saldo = f"Saldo: ${saldo_atual:,.2f} USDT"
-            if preco_brl > 0:
-                texto_saldo += f" (≈ R$ {saldo_em_brl:,.2f})"
-            
-            self.saldo_usdt_label.config(text=texto_saldo)
-            
-            resultado_distribuicao = AnalysisEngine.calcular_distribuicao_portfolio(operacoes)
-            self._exibir_distribuicao(resultado_distribuicao, saldo_info)
-            
-        except Exception as e:
-            logger.error(f"Erro ao calcular distribuição: {e}")
-            self.distribuicao_text.insert(tk.END, f"❌ Erro ao processar dados: {e}")
+        saldo_info = AnalysisEngine.calcular_saldo_usdt(operacoes)
+        saldo_usdt = saldo_info['saldo_atual']
+
+        ops_por_moeda = defaultdict(list)
+        for op in sorted(operacoes, key=lambda x: x['Data']):
+            if op['Moeda'] == 'USDT':
+                continue
+            ops_por_moeda[op['Moeda']].append(op)
+        
+        distribuicao = {}
+        total_valor_crypto = 0
+        
+        for moeda, ops in ops_por_moeda.items():
+            analise = AnalysisEngine._analisar_moeda(ops, precos_atuais.get(moeda, 0))
+            quantidade_final = analise.get('quantidade_final', 0)
+            valor_de_mercado = analise.get('valor_atual_posicao', 0)
+
+            if valor_de_mercado > 0.01:
+                distribuicao[moeda] = {
+                    'valor_atual': valor_de_mercado,
+                    'quantidade': quantidade_final
+                }
+                total_valor_crypto += valor_de_mercado
+        
+        valor_total_portfolio = total_valor_crypto + saldo_usdt
+
+        if saldo_usdt > 0.01: 
+            distribuicao['USDT'] = {
+                'valor_atual': saldo_usdt,
+                'quantidade': saldo_usdt
+            }
+
+        for moeda in distribuicao:
+            if valor_total_portfolio > 0:
+                distribuicao[moeda]['percentual'] = (distribuicao[moeda]['valor_atual'] / valor_total_portfolio) * 100
+            else:
+                distribuicao[moeda]['percentual'] = 0
+        
+        return {
+            'distribuicao': distribuicao,
+            'total_investido': total_valor_crypto 
+        }
 
     def mostrar_saldo_usdt(self):
         try:
