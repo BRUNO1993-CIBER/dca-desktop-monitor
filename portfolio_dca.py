@@ -421,7 +421,7 @@ class AnalysisEngine:
 
 class PortfolioDCA:
     def __init__(self):
-        self.moedas_suportadas = ["BTC", "ETH", "SOL", "LINK", "USDT"]
+        self.moedas_suportadas = ["BTC", "ETH", "SOL", "LINK", "SUI", "USDT"]
         self.data_manager = DataManager()
         self.price_manager = PriceManager('binance')
         self._stop_updates = False
@@ -438,8 +438,8 @@ class PortfolioDCA:
         self.janela.title("Portfólio DCA - Análise e Registro de Operações")
         self.janela.minsize(1100, 700)
 
-        largura_janela = 1280
-        altura_janela = 720
+        largura_janela = 1400
+        altura_janela = 800
         tela_largura = self.janela.winfo_screenwidth()
         tela_altura = self.janela.winfo_screenheight()
         x = (tela_largura // 2) - (largura_janela // 2)
@@ -790,8 +790,9 @@ class PortfolioDCA:
         summary_frame = ttk.Frame(frame, padding=10)
         summary_frame.pack(fill='x')
         self._criar_labels_resumo(summary_frame)
+
+        self.cols_analise = ('Ativo', 'Posição', 'Preço Médio', 'Custo Posição', 'Preço Mercado', 'Valor Atual', 'P/L N. Realizado', 'P/L Realizado', 'P/L Total', 'Ganho %')
         
-        self.cols_analise = ('Ativo', 'Posição', 'Preço Médio', 'Custo Posição', 'Preço Mercado', 'Valor Atual', 'P/L N. Realizado', 'P/L Realizado', 'P/L Total')
         self.tree_analise = ttk.Treeview(frame, columns=self.cols_analise, show='headings')
         
         for col in self.cols_analise:
@@ -1256,33 +1257,41 @@ class PortfolioDCA:
         self.resumo_pl_geral.config(text=f"P/L GERAL: {self._formatar_valor_monetario(total_geral)}", foreground=cor_pl)
 
     def _inserir_linha_analise(self, moeda: str, dados: Dict):
-        quantidade = dados.get('quantidade_final', 0)
-        pmc = dados.get('pmc_final', 0)
-        custo = dados.get('custo_posicao_final', 0)
-        preco_mercado = dados.get('preco_de_mercado', 0)
-        valor_atual = dados.get('valor_atual_posicao', 0)
-        pl_n_realizado = dados.get('lucro_nao_realizado', 0)
-        pl_realizado = dados.get('lucro_realizado', 0)
-        pl_total = dados.get('lucro_total', 0)
+            quantidade = dados.get('quantidade_final', 0)
+            pmc = dados.get('pmc_final', 0)
+            custo = dados.get('custo_posicao_final', 0)
+            preco_mercado = dados.get('preco_de_mercado', 0)
+            valor_atual = dados.get('valor_atual_posicao', 0)
+            pl_n_realizado = dados.get('lucro_nao_realizado', 0)
+            pl_realizado = dados.get('lucro_realizado', 0)
+            pl_total = dados.get('lucro_total', 0)
 
-        if moeda == 'USDT (Caixa)':
-            valores = (
-                moeda, f"{quantidade:,.2f} USDT", "N/A", "N/A", self._formatar_preco(1.0), 
-                self._formatar_valor_monetario(valor_atual), 
-                "N/A", "N/A", "N/A"
-            )
-            tag = ''
-        else:
-            valores = (
-                moeda, f"{quantidade:,.8f}", self._formatar_preco(pmc), self._formatar_valor_monetario(custo),
-                self._formatar_preco(preco_mercado), self._formatar_valor_monetario(valor_atual),
-                self._formatar_valor_monetario(pl_n_realizado), self._formatar_valor_monetario(pl_realizado),
-                self._formatar_valor_monetario(pl_total)
-            )
-            tag = 'lucro' if pl_total >= 0 else 'prejuizo'
+            if custo > 0.000001: 
+                porcentagem = (pl_total / custo) * 100
+                str_porcentagem = f"{porcentagem:+.2f}%" 
+            else:
+                str_porcentagem = "0.00%"
+            # -----------------------------------
 
-        self.tree_analise.insert('', 'end', values=valores, tags=(tag,))
+            if moeda == 'USDT (Caixa)':
+                valores = (
+                    moeda, f"{quantidade:,.2f} USDT", "N/A", "N/A", self._formatar_preco(1.0), 
+                    self._formatar_valor_monetario(valor_atual), 
+                    "N/A", "N/A", "N/A", 
+                    "0.00%" 
+                )
+                tag = ''
+            else:
+                valores = (
+                    moeda, f"{quantidade:,.8f}", self._formatar_preco(pmc), self._formatar_valor_monetario(custo),
+                    self._formatar_preco(preco_mercado), self._formatar_valor_monetario(valor_atual),
+                    self._formatar_valor_monetario(pl_n_realizado), self._formatar_valor_monetario(pl_realizado),
+                    self._formatar_valor_monetario(pl_total),
+                    str_porcentagem
+                )
+                tag = 'lucro' if pl_total >= 0 else 'prejuizo'
 
+            self.tree_analise.insert('', 'end', values=valores, tags=(tag,))
     def carregar_historico(self):
         for item in self.tree.get_children(): self.tree.delete(item)
         try:
