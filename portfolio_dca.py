@@ -12,6 +12,8 @@ import logging
 from decimal import Decimal, InvalidOperation
 from ttkthemes import ThemedTk
 
+from janela_de_analise import JanelaAnalise
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -489,17 +491,17 @@ class PortfolioDCA:
         btn_frame.pack(pady=10)
 
         btn_carregar = ttk.Button(
-            btn_frame, text="📥 Carregar Selecionada", command=self._carregar_transacao, style="Accent.TButton"
+            btn_frame, text="📥 Carregar Selecionada", command=self._carregar_transacao, style="Accent.TButton", cursor="hand2"
         )
         btn_carregar.pack(side=tk.LEFT, padx=5)
 
         btn_salvar = ttk.Button(
-            btn_frame, text="💾 Salvar Alterações", command=self._salvar_transacao_editada
+            btn_frame, text="💾 Salvar Alterações", command=self._salvar_transacao_editada, cursor="hand2"
         )
         btn_salvar.pack(side=tk.LEFT, padx=5)
 
         btn_excluir = ttk.Button(
-            btn_frame, text="🗑️ Excluir Selecionada", command=self._excluir_transacao
+            btn_frame, text="🗑️ Excluir Selecionada", command=self._excluir_transacao, cursor="hand2"
         )
         btn_excluir.pack(side=tk.LEFT, padx=5)
 
@@ -721,7 +723,12 @@ class PortfolioDCA:
         style.configure("Accent.TButton", font=("Arial", 12, "bold"))
 
         btn_salvar = ttk.Button(
-            frame, text="💾 Salvar Operação", command=self.salvar_operacao, style="Accent.TButton", padding=(20, 10)
+            frame, 
+            text="💾 Salvar Operação", 
+            command=self.salvar_operacao, 
+            style="Accent.TButton", 
+            padding=(20, 10), 
+            cursor="hand2"
         )
         btn_salvar.pack(pady=30)
 
@@ -753,77 +760,17 @@ class PortfolioDCA:
             self.entry_preco.grid(row=3, column=1, pady=5, padx=10)
             self.entry_preco.bind('<KeyRelease>', self.calcular_quantidade)
 
-            btn_usar_preco = ttk.Button(parent, text="Usar Preço Atual", command=self.usar_preco_atual)
+            btn_usar_preco = ttk.Button(parent, text="Usar Preço Atual", command=self.usar_preco_atual, cursor="hand2")
             btn_usar_preco.grid(row=3, column=2, pady=5, padx=10, sticky='w')
             
             self.label_saldo_venda = ttk.Label(parent, text="", font=("Arial", 10, "bold"), foreground='darkblue')
             self.label_saldo_venda.grid(row=4, column=0, columnspan=2, sticky='w', padx=5, pady=(10,0))
-
-            self.btn_vender_tudo = ttk.Button(parent, text="Vender Tudo", command=self.vender_tudo)
+            self.btn_vender_tudo = ttk.Button(parent, text="Vender Tudo", command=self.vender_tudo, cursor="hand2")
             self.btn_vender_tudo.grid(row=4, column=2, pady=(10,0), padx=10, sticky='w')
 
             self.label_saldo_venda.grid_remove()
             self.btn_vender_tudo.grid_remove()
 
-    def criar_aba_portfolio(self):
-        frame = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(frame, text="📊 Análise Detalhada")
-        
-        control_frame = ttk.Frame(frame)
-        control_frame.pack(fill='x', padx=5, pady=5)
-        
-        btn_atualizar = ttk.Button(
-            control_frame, text="🔄 Atualizar Análise", command=self.atualizar_todas_as_analises, style="Accent.TButton"
-        )
-        btn_atualizar.pack(side=tk.LEFT)
-
-        self.brl_toggle_var = tk.BooleanVar()
-        self.brl_toggle_button = ttk.Checkbutton(
-            control_frame, text="Exibir em BRL", 
-            variable=self.brl_toggle_var,
-            command=self._toggle_currency_display,
-            style="Switch.TCheckbutton"
-        )
-        self.brl_toggle_button.pack(side=tk.LEFT, padx=15)
-        
-        self.ultima_atualizacao_label = ttk.Label(control_frame, text="", font=("Arial", 9))
-        self.ultima_atualizacao_label.pack(side=tk.RIGHT)
-        
-        summary_frame = ttk.Frame(frame, padding=10)
-        summary_frame.pack(fill='x')
-        self._criar_labels_resumo(summary_frame)
-
-        self.cols_analise = (
-            'Ativo', 'Posição', 'Preço Médio', 'Preço Mercado', 
-            'Custo Posição', 'Valor Atual', 'P/L N. Realizado', 
-            'P/L Realizado', 'P/L Total', 'Ganho %'
-        )
-        self.tree_analise = ttk.Treeview(frame, columns=self.cols_analise, show='headings')
-        
-        for col in self.cols_analise:
-            self.tree_analise.heading(col, text=col)
-            self.tree_analise.column(col, anchor='center', width=135)
-        
-        self.tree_analise.tag_configure('lucro', foreground='green')
-        self.tree_analise.tag_configure('prejuizo', foreground='red')
-        
-        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.tree_analise.yview)
-        self.tree_analise.configure(yscrollcommand=scrollbar.set)
-        
-        self.tree_analise.pack(side='left', fill='both', expand=True, padx=(5,0))
-        scrollbar.pack(side='right', fill='y')
-
-    def _criar_labels_resumo(self, parent):
-        font_titulo = ("Arial", 11, "bold")
-        font_valor = ("Arial", 11)
-
-        self.resumo_valor_atual = ttk.Label(parent, text="Valor de Mercado Atual: $0.00", font=font_valor)
-        self.resumo_custo_total = ttk.Label(parent, text="Custo Total (Posições Abertas): $0.00", font=font_valor)
-        self.resumo_pl_geral = ttk.Label(parent, text="P/L GERAL: $0.00", font=font_titulo)
-
-        self.resumo_valor_atual.grid(row=0, column=0, padx=10, sticky='w')
-        self.resumo_custo_total.grid(row=1, column=0, padx=10, sticky='w')
-        self.resumo_pl_geral.grid(row=0, column=1, rowspan=2, padx=20, sticky='w')
 
     def criar_aba_distribuicao(self):
         frame = ttk.Frame(self.notebook, padding=10)
@@ -835,13 +782,15 @@ class PortfolioDCA:
         btn_atualizar_dist = ttk.Button(
             control_frame, text="🔄 Atualizar Distribuição", 
             command=self.atualizar_distribuicao,
-            style="Accent.TButton"
+            style="Accent.TButton",
+            cursor="hand2"
         )
         btn_atualizar_dist.pack(side=tk.LEFT)
         
         btn_saldo_usdt = ttk.Button(
             control_frame, text="💰 Saldo USDT", 
-            command=self.mostrar_saldo_usdt
+            command=self.mostrar_saldo_usdt,
+            cursor="hand2"
         )
         btn_saldo_usdt.pack(side=tk.LEFT, padx=(10, 0))
         
@@ -1095,48 +1044,6 @@ class PortfolioDCA:
         
         self.distribuicao_text.insert(tk.END, f"   • Status: {diversificacao}\n\n")
 
-    def _toggle_currency_display(self):
-        self.display_currency = 'BRL' if self.brl_toggle_var.get() else 'USD'
-        
-        taxa_brl = self.price_manager.preco_brl
-        if self.display_currency == 'BRL' and (taxa_brl is None or taxa_brl <= 0):
-            messagebox.showwarning("Cotação Indisponível", "Não foi possível obter a cotação do BRL. Exibindo em USD.")
-            self.display_currency = 'USD'
-            self.brl_toggle_var.set(False)
-
-        simbolo = "R$" if self.display_currency == 'BRL' else "$"
-        
-        for col_name in self.cols_analise:
-            if any(s in col_name for s in ['Preço', 'Custo', 'Valor', 'P/L']):
-                 self.tree_analise.heading(col_name, text=col_name.replace('$', ''))
-                 self.tree_analise.heading(col_name, text=f"{col_name} ({simbolo})")
-
-        self.exibir_analise_detalhada()
-
-    def _formatar_valor_monetario(self, valor_usd: float) -> str:
-        simbolo = '$'
-        valor = valor_usd
-
-        if self.display_currency == 'BRL':
-            taxa_brl = self.price_manager.preco_brl
-            if taxa_brl and taxa_brl > 0:
-                simbolo = 'R$'
-                valor = valor_usd * taxa_brl
-
-        return f"{simbolo}{valor:,.2f}"
-
-    def _formatar_preco(self, preco_usd: float) -> str:
-        simbolo = '$'
-        valor = preco_usd
-        
-        if self.display_currency == 'BRL':
-            taxa_brl = self.price_manager.preco_brl
-            if taxa_brl and taxa_brl > 0:
-                simbolo = 'R$'
-                valor = preco_usd * taxa_brl
-        
-        return f"{simbolo}{valor:,.4f}"
-
     def salvar_operacao(self):
         erros = self._validar_campos_operacao()
         if erros:
@@ -1230,85 +1137,7 @@ class PortfolioDCA:
         self.quantidade_label.config(text="")
         self.preco_atual_label.config(text="")
 
-    def exibir_analise_detalhada(self):
-        for item in self.tree_analise.get_children():
-            self.tree_analise.delete(item)
 
-        try:
-            operacoes = self.data_manager.carregar_operacoes()
-            if not operacoes:
-                self.tree_analise.insert('', 'end', values=("Nenhuma operação registrada ainda.", "", "", "", "", "", "", "", ""))
-                return
-
-            resultado = AnalysisEngine.calcular_portfolio(operacoes, self.price_manager.precos_cache)
-            self._exibir_resultado_analise(resultado)
-
-        except Exception as e:
-            logger.error(f"Erro na análise: {e}")
-            messagebox.showerror("Erro de Análise", f"Ocorreu um erro ao processar os dados: {e}")
-
-    def _exibir_resultado_analise(self, resultado: Dict):
-        if not resultado: return
-        
-        if 'totais' in resultado:
-            self._exibir_resumo_geral_labels(resultado['totais'])
-        
-        for moeda, dados in resultado.items():
-            if moeda == 'totais': continue
-            self._inserir_linha_analise(moeda, dados)
-            
-    def _exibir_resumo_geral_labels(self, totais: Dict):
-        valor_atual = totais['valor_atual']
-        investido_liquido = totais['investido_liquido']
-        total_geral = totais['realizado'] + totais['nao_realizado']
-        
-        cor_pl = 'green' if total_geral >= 0 else 'red'
-        
-        self.resumo_valor_atual.config(text=f"Valor de Mercado Atual: {self._formatar_valor_monetario(valor_atual)}")
-        self.resumo_custo_total.config(text=f"Custo Total (Posições Abertas): {self._formatar_valor_monetario(investido_liquido)}")
-        self.resumo_pl_geral.config(text=f"P/L GERAL: {self._formatar_valor_monetario(total_geral)}", foreground=cor_pl)
-
-    def _inserir_linha_analise(self, moeda: str, dados: Dict):
-            quantidade = dados.get('quantidade_final', 0)
-            pmc = dados.get('pmc_final', 0)
-            custo = dados.get('custo_posicao_final', 0)
-            preco_mercado = dados.get('preco_de_mercado', 0)
-            valor_atual = dados.get('valor_atual_posicao', 0)
-            pl_n_realizado = dados.get('lucro_nao_realizado', 0)
-            pl_realizado = dados.get('lucro_realizado', 0)
-            pl_total = dados.get('lucro_total', 0)
-
-            if custo > 0.000001: 
-                porcentagem = (pl_n_realizado / custo) * 100
-                str_porcentagem = f"{porcentagem:+.2f}%" 
-            else:
-                str_porcentagem = "0.00%"
-            # -----------------------------------
-
-            if moeda == 'USDT (Caixa)':
-                valores = (
-                    moeda, f"{quantidade:,.2f} USDT", "N/A", "N/A", self._formatar_preco(1.0), 
-                    self._formatar_valor_monetario(valor_atual), 
-                    "N/A", "N/A", "N/A", 
-                    "0.00%" 
-                )
-                tag = ''
-            else:
-                valores = (
-                    moeda,                                      # 'Ativo'
-                    f"{quantidade:,.8f}",                       # 'Posição'
-                    self._formatar_preco(pmc),                  # 'Preço Médio'
-                    self._formatar_preco(preco_mercado),        # 'Preço Mercado'
-                    self._formatar_valor_monetario(custo),      # 'Custo Posição'
-                    self._formatar_valor_monetario(valor_atual), # 'Valor Atual'
-                    self._formatar_valor_monetario(pl_n_realizado), # 'P/L N. Realizado'
-                    self._formatar_valor_monetario(pl_realizado),    # 'P/L Realizado'
-                    self._formatar_valor_monetario(pl_total),        # 'P/L Total'
-                    str_porcentagem                             # 'Ganho %'
-                )
-                tag = 'lucro' if pl_total >= 0 else 'prejuizo'
-
-            self.tree_analise.insert('', 'end', values=valores, tags=(tag,))
 
     def carregar_historico(self):
         for item in self.tree.get_children(): self.tree.delete(item)
@@ -1399,13 +1228,8 @@ class PortfolioDCA:
         def worker():
             try:
                 self.atualizar_status("Atualizando preços...")
-                sucesso = self.price_manager.atualizar_precos(self.moedas_suportadas)
-                if sucesso and self.price_manager.ultima_atualizacao:
-                    ultima_atualizacao = self.price_manager.ultima_atualizacao.strftime('%d/%m/%Y %H:%M:%S')
-                    self.janela.after(0, lambda: self.ultima_atualizacao_label.config(text=f"Última atualização: {ultima_atualizacao}"))
-                
+                sucesso = self.price_manager.atualizar_precos(self.moedas_suportadas)             
                 self.atualizar_status("Calculando análises...")
-                self.janela.after(0, self.exibir_analise_detalhada)
                 self.janela.after(100, self.atualizar_distribuicao)
                 self.janela.after(200, self.carregar_historico)
                 self.janela.after(300, self._atualizar_lista_edicao)
@@ -1415,6 +1239,25 @@ class PortfolioDCA:
                 self.atualizar_status(f"Erro: {e}")
         
         threading.Thread(target=worker, daemon=True).start()
+
+    def criar_aba_portfolio(self):
+        frame = ttk.Frame(self.notebook, padding=10)
+        self.notebook.add(frame, text="📊 Análise Detalhada")
+        
+        ttk.Label(frame, text="Análise Detalhada do Portfólio", font=("Arial", 16, "bold")).pack(pady=20)
+        ttk.Label(frame, text="Clique no botão abaixo para abrir a análise completa em uma janela separada.", font=("Arial", 11)).pack(pady=10)
+        
+        btn_abrir = ttk.Button(
+            frame, text="📊 Abrir Análise Detalhada", 
+            command=self.abrir_janela_analise,
+            style="Accent.TButton",
+            padding=(20, 10),
+            cursor="hand2"
+        )
+        btn_abrir.pack(pady=30)
+
+    def abrir_janela_analise(self):
+        JanelaAnalise(self.janela, self.data_manager, self.price_manager, AnalysisEngine)
 
     def iniciar_atualizacoes_automaticas(self):
         def worker():
