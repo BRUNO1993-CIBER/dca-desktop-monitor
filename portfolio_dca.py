@@ -1,3 +1,4 @@
+from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
@@ -24,9 +25,10 @@ except ImportError:
 
 class DataManager:
     def __init__(self, arquivo_csv: str = "meu_diario_operacoes.csv"):
-        self.arquivo_csv = arquivo_csv
+        raiz_projeto = Path(__file__).parent.resolve()  
+        self.arquivo_csv = raiz_projeto / arquivo_csv
         self.headers = ['Data', 'Moeda', 'Operacao', 'Valor_USDT', 'Preco', 'Quantidade']
-    
+
     def criar_arquivo_se_necessario(self):
         if not os.path.exists(self.arquivo_csv):
             try:
@@ -421,7 +423,7 @@ class AnalysisEngine:
 
 class PortfolioDCA:
     def __init__(self):
-        self.moedas_suportadas = ["BTC", "ETH", "SOL", "LINK", "SUI", "USDT"]
+        self.moedas_suportadas = ["BTC", "ETH", "SOL", "LINK", "SUI", "NEAR", "USDT"]
         self.data_manager = DataManager()
         self.price_manager = PriceManager('binance')
         self._stop_updates = False
@@ -791,8 +793,11 @@ class PortfolioDCA:
         summary_frame.pack(fill='x')
         self._criar_labels_resumo(summary_frame)
 
-        self.cols_analise = ('Ativo', 'Posição', 'Preço Médio', 'Custo Posição', 'Preço Mercado', 'Valor Atual', 'P/L N. Realizado', 'P/L Realizado', 'P/L Total', 'Ganho %')
-        
+        self.cols_analise = (
+            'Ativo', 'Posição', 'Preço Médio', 'Preço Mercado', 
+            'Custo Posição', 'Valor Atual', 'P/L N. Realizado', 
+            'P/L Realizado', 'P/L Total', 'Ganho %'
+        )
         self.tree_analise = ttk.Treeview(frame, columns=self.cols_analise, show='headings')
         
         for col in self.cols_analise:
@@ -1137,35 +1142,29 @@ class PortfolioDCA:
         if erros:
             messagebox.showerror("Erro de Validação", "\n".join(erros))
             return
-        
+
         try:
-            moeda = self.combo_moeda.get().upper()
-            tipo = self.combo_tipo.get().lower()
+            moeda = self.combo_moeda.get().strip().upper()
+            tipo = self.combo_tipo.get().strip().lower()
+
             valor = Decimal(self.entry_valor.get())
             preco = Decimal(self.entry_preco.get())
+
+            if preco <= 0:
+                raise InvalidOperation("Preço inválido")
+
             quantidade = valor / preco
-            
-            TAXA_OPERACAO = Decimal('0.001')
-
-            info_taxa = ""
-
-            if moeda != 'USDT':
-                if tipo == 'compra':
-                    taxa_cobrada = quantidade * TAXA_OPERACAO
-                    quantidade -= taxa_cobrada
-                    info_taxa = f"\n\nTaxa de 0.1% aplicada: -{taxa_cobrada:.8f} {moeda}"
-                elif tipo == 'venda':
-                    taxa_cobrada = valor * TAXA_OPERACAO
-                    valor -= taxa_cobrada
-                    info_taxa = f"\n\nTaxa de 0.1% aplicada: -${taxa_cobrada:.4f} USDT"
 
             if tipo == 'compra' and moeda != 'USDT':
-                operacoes_existentes = self.data_manager.carregar_operacoes()
-                validacao = AnalysisEngine.validar_saldo_suficiente(operacoes_existentes, float(valor))
-                
+                operacoes = self.data_manager.carregar_operacoes()
+                validacao = AnalysisEngine.validar_saldo_suficiente(
+                    operacoes, float(valor)
+                )
+
                 if not validacao['saldo_suficiente']:
                     saldo_atual = validacao['saldo_atual']
                     faltam = abs(validacao['diferenca'])
+
                     resposta = messagebox.askquestion(
                         "Saldo USDT Insuficiente",
                         f"Saldo atual: ${saldo_atual:,.2f} USDT\n"
@@ -1174,29 +1173,42 @@ class PortfolioDCA:
                         f"Deseja continuar mesmo assim?",
                         icon='warning'
                     )
+
                     if resposta == 'no':
                         return
-            
+
             data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            operacao = [data_hora, moeda, tipo, float(valor), float(preco), float(quantidade)]
-            
-            if self.data_manager.salvar_operacao(operacao):
-                if moeda == 'USDT':
-                    acao = "Depósito" if tipo == 'compra' else "Saque"
-                    messagebox.showinfo("Sucesso", f"{acao} de ${valor:,.2f} USDT registrado!")
-                else:
-                    acao = tipo.title()
-                    messagebox.showinfo("Sucesso", f"{acao} de {moeda} registrada! Saldo USDT atualizado." + info_taxa)
-                
-                self._limpar_formulario()
-                self.atualizar_todas_as_analises()
-            else:
+            operacao = [
+                data_hora,
+                moeda,
+                tipo,
+                float(valor),
+                float(preco),
+                float(quantidade)
+            ]
+
+            if not self.data_manager.salvar_operacao(operacao):
                 messagebox.showerror("Erro", "Não foi possível salvar a operação.")
-                
+                return
+
+            if moeda == 'USDT':
+                acao = "Depósito" if tipo == 'compra' else "Saque"
+                mensagem = f"{acao} de ${valor:,.2f} USDT registrado!"
+            else:
+                mensagem = f"{tipo.title()} de {moeda} registrada! Saldo USDT atualizado."
+
+            messagebox.showinfo("Sucesso", mensagem)
+
+            self._limpar_formulario()
+            self.atualizar_todas_as_analises()
+
         except InvalidOperation:
-            messagebox.showerror("Erro de Validação", "Valor e Preço devem ser números válidos.")
+            messagebox.showerror(
+                "Erro de Validação",
+                "Valor e preço devem ser números válidos e maiores que zero."
+            )
         except Exception as e:
-            logger.error(f"Erro ao salvar operação: {e}")
+            logger.exception("Erro ao salvar operação")
             messagebox.showerror("Erro", f"Erro inesperado: {e}")
 
     def _validar_campos_operacao(self) -> List[str]:
@@ -1283,15 +1295,21 @@ class PortfolioDCA:
                 tag = ''
             else:
                 valores = (
-                    moeda, f"{quantidade:,.8f}", self._formatar_preco(pmc), self._formatar_valor_monetario(custo),
-                    self._formatar_preco(preco_mercado), self._formatar_valor_monetario(valor_atual),
-                    self._formatar_valor_monetario(pl_n_realizado), self._formatar_valor_monetario(pl_realizado),
-                    self._formatar_valor_monetario(pl_total),
-                    str_porcentagem
+                    moeda,                                      # 'Ativo'
+                    f"{quantidade:,.8f}",                       # 'Posição'
+                    self._formatar_preco(pmc),                  # 'Preço Médio'
+                    self._formatar_preco(preco_mercado),        # 'Preço Mercado'
+                    self._formatar_valor_monetario(custo),      # 'Custo Posição'
+                    self._formatar_valor_monetario(valor_atual), # 'Valor Atual'
+                    self._formatar_valor_monetario(pl_n_realizado), # 'P/L N. Realizado'
+                    self._formatar_valor_monetario(pl_realizado),    # 'P/L Realizado'
+                    self._formatar_valor_monetario(pl_total),        # 'P/L Total'
+                    str_porcentagem                             # 'Ganho %'
                 )
                 tag = 'lucro' if pl_total >= 0 else 'prejuizo'
 
             self.tree_analise.insert('', 'end', values=valores, tags=(tag,))
+
     def carregar_historico(self):
         for item in self.tree.get_children(): self.tree.delete(item)
         try:
