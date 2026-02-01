@@ -1228,11 +1228,12 @@ class PortfolioDCA:
         def worker():
             try:
                 self.atualizar_status("Atualizando preços...")
-                sucesso = self.price_manager.atualizar_precos(self.moedas_suportadas)             
+                self.price_manager.atualizar_precos(self.moedas_suportadas)
+                
                 self.atualizar_status("Calculando análises...")
-                self.janela.after(100, self.atualizar_distribuicao)
-                self.janela.after(200, self.carregar_historico)
-                self.janela.after(300, self._atualizar_lista_edicao)
+                self.janela.after(0, self.atualizar_distribuicao)
+                self.janela.after(100, self.carregar_historico)
+                self.janela.after(200, self._atualizar_lista_edicao)
                 self.atualizar_status("Análises atualizadas!")
             except Exception as e:
                 logger.error(f"Erro na atualização: {e}")

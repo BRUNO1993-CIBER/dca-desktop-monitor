@@ -94,21 +94,39 @@ class JanelaAnalise:
         self.resumo_pl_geral.grid(row=0, column=1, rowspan=2, padx=20, sticky='w')
 
     def atualizar_analise(self):
+        def worker():
+            try:
+                operacoes = self.data_manager.carregar_operacoes()
+                
+                if not operacoes:
+                    self.janela.after(0, lambda: self._limpar_e_mostrar_vazio())
+                    return
+
+                resultado = self.analysis_engine.calcular_portfolio(operacoes, self.price_manager.precos_cache)
+                
+                from datetime import datetime
+                agora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+                
+                self.janela.after(0, lambda: self.ultima_atualizacao_label.config(text=f"Última atualização: {agora}"))
+                self.janela.after(0, lambda: self.exibir_resultado_analise(resultado))
+
+            except Exception as e:
+                logger.error(f"Erro na análise: {e}")
+                self.janela.after(0, lambda: self.ultima_atualizacao_label.config(text="Erro ao atualizar"))
+                self.janela.after(0, lambda: messagebox.showerror("Erro de Análise", f"Ocorreu um erro ao processar os dados: {e}"))
+        
+        self.ultima_atualizacao_label.config(text="🔄 Atualizando...")
+        
         for item in self.tree.get_children():
             self.tree.delete(item)
+        
+        import threading
+        threading.Thread(target=worker, daemon=True).start()
 
-        try:
-            operacoes = self.data_manager.carregar_operacoes()
-            if not operacoes:
-                self.tree.insert('', 'end', values=("Nenhuma operação registrada ainda.", "", "", "", "", "", "", "", "", ""))
-                return
-
-            resultado = self.analysis_engine.calcular_portfolio(operacoes, self.price_manager.precos_cache)
-            self.exibir_resultado_analise(resultado)
-
-        except Exception as e:
-            logger.error(f"Erro na análise: {e}")
-            messagebox.showerror("Erro de Análise", f"Ocorreu um erro ao processar os dados: {e}")
+    def _limpar_e_mostrar_vazio(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        self.tree.insert('', 'end', values=("Nenhuma operação registrada ainda.", "", "", "", "", "", "", "", "", ""))
 
     def exibir_resultado_analise(self, resultado):
         if not resultado: 
