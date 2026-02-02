@@ -507,8 +507,6 @@ class PortfolioDCA:
 
         self._atualizar_lista_edicao()
 
-
-
     def atualizar_distribuicao(self):
             self.distribuicao_text.delete(1.0, tk.END)
             
@@ -539,17 +537,12 @@ class PortfolioDCA:
                 self.distribuicao_text.insert(tk.END, f"❌ Erro ao processar dados: {e}")
 
     def ao_mudar_selecao_formulario(self, event=None):
-        """
-        Esta função é chamada sempre que a moeda ou o tipo de operação são alterados.
-        Ela chama as funções de atualização necessárias.
-        """
+
         self.ao_selecionar_moeda(event)
         self._atualizar_interface_venda(event)
 
     def _atualizar_interface_venda(self, event=None):
-        """
-        Verifica se a operação é 'Venda' e mostra ou esconde o saldo e o botão 'Vender Tudo'.
-        """
+
         moeda = self.combo_moeda.get()
         operacao = self.combo_tipo.get()
 
@@ -574,9 +567,7 @@ class PortfolioDCA:
             self.btn_vender_tudo.grid_remove()
 
     def vender_tudo(self):
-        """
-        Preenche os campos de valor e preço para vender toda a posição da moeda selecionada.
-        """
+
         moeda = self.combo_moeda.get()
         if not moeda or moeda == 'USDT':
             messagebox.showwarning("Ação inválida", "Selecione uma criptomoeda para vender.")

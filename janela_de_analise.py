@@ -135,9 +135,15 @@ class JanelaAnalise:
         if 'totais' in resultado:
             self.exibir_resumo_geral_labels(resultado['totais'])
         
-        for moeda, dados in resultado.items():
-            if moeda == 'totais': 
-                continue
+        moedas_dados = {moeda: dados for moeda, dados in resultado.items() if moeda != 'totais'}
+        
+        moedas_ordenadas = sorted(
+            moedas_dados.items(), 
+            key=lambda item: item[1].get('valor_atual_posicao', 0), 
+            reverse=True
+        )
+        
+        for moeda, dados in moedas_ordenadas:
             self.inserir_linha_analise(moeda, dados)
 
     def exibir_resumo_geral_labels(self, totais):
