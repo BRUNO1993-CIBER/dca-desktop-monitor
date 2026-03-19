@@ -40,7 +40,7 @@ class JanelaAnalise:
             control_frame, text="🔄 Atualizar Análise", 
             command=self.atualizar_analise,
             style="Accent.TButton",
-            cursor="hand2"  
+            cursor="hand2"
         )
         btn_atualizar.pack(side=tk.LEFT)
 
@@ -74,6 +74,7 @@ class JanelaAnalise:
         
         self.tree.tag_configure('lucro', foreground='green')
         self.tree.tag_configure('prejuizo', foreground='red')
+        self.tree.tag_configure('linha_total', font=("Arial", 10, "bold"), background='#2a2a2a')
         
         scrollbar = ttk.Scrollbar(self.janela, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
@@ -142,9 +143,37 @@ class JanelaAnalise:
             key=lambda item: item[1].get('valor_atual_posicao', 0), 
             reverse=True
         )
-        
+
+        total_custo = 0
+        total_valor_atual = 0
+        total_pl_nao_realizado = 0
+        total_pl_realizado = 0
+
         for moeda, dados in moedas_ordenadas:
             self.inserir_linha_analise(moeda, dados)
+            total_custo += dados.get('custo_posicao_final', 0)
+            total_valor_atual += dados.get('valor_atual_posicao', 0)
+            total_pl_nao_realizado += dados.get('lucro_nao_realizado', 0)
+            total_pl_realizado += dados.get('lucro_realizado', 0)
+
+        total_pl_total = total_pl_nao_realizado + total_pl_realizado
+        porcentagem_total = (total_pl_nao_realizado / total_custo * 100) if total_custo > 0.000001 else 0
+
+        valores_total = (
+            "📊 TOTAL GERAL",
+            "",
+            "",
+            "",
+            self.formatar_valor_monetario(total_custo),
+            self.formatar_valor_monetario(total_valor_atual),
+            self.formatar_valor_monetario(total_pl_nao_realizado),
+            self.formatar_valor_monetario(total_pl_realizado),
+            self.formatar_valor_monetario(total_pl_total),
+            f"{porcentagem_total:+.2f}%"
+        )
+
+        tag_pl = 'lucro' if total_pl_total >= 0 else 'prejuizo'
+        self.tree.insert('', 'end', values=valores_total, tags=(tag_pl, 'linha_total'))
 
     def exibir_resumo_geral_labels(self, totais):
         valor_atual = totais['valor_atual']
@@ -178,7 +207,7 @@ class JanelaAnalise:
                 moeda, f"{quantidade:,.2f} USDT", "N/A", "N/A", self.formatar_preco(1.0), 
                 self.formatar_valor_monetario(valor_atual), 
                 "N/A", "N/A", "N/A", 
-                "0.00%" 
+                "0.00%"
             )
             tag = ''
         else:
