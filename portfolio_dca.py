@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class PortfolioDCA:
     def __init__(self):
-        self.moedas_suportadas = ["BTC", "ETH", "SOL", "LINK", "SUI", "NEAR", "UNI", "USDT"]
+        self.moedas_suportadas = ["BTC", "ETH", "SOL", "XRP" "LINK", "SUI", "NEAR", "UNI", "USDT"]
         self.data_manager = DataManager()
         self.price_manager = PriceManager('binance')
         self._stop_updates = False
