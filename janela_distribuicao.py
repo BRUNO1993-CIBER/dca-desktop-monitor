@@ -1,4 +1,5 @@
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import ttk, messagebox
 from typing import Any, Optional, Callable
 from datetime import datetime
@@ -32,6 +33,10 @@ _TAGS = {
     "dim":       {"font": ("Consolas", 10),          "foreground": "#757575"},
 }
 
+# Largura mínima e máxima em caracteres para o painel de texto
+_LARGURA_MIN = 44
+_LARGURA_MAX = 90
+
 
 class JanelaDistribuicao(ttk.Frame):
 
@@ -43,7 +48,10 @@ class JanelaDistribuicao(ttk.Frame):
         self._engine        = analysis_engine
         self._on_change     = on_change or (lambda: None)
         self._cor_map: dict[str, str] = {}
+        self._resize_job: Optional[str] = None
         self._build_ui()
+
+    # ─────────────────────────── BUILD ────────────────────────────
 
     def _build_ui(self) -> None:
         self._build_toolbar()
@@ -74,9 +82,11 @@ class JanelaDistribuicao(ttk.Frame):
         container = ttk.Frame(parent)
         container.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
 
-        self._text = tk.Text(container, wrap="word", font=("Consolas", 11),
-                             relief="flat", padx=20, pady=15, bg="#F8F9FA",
-                             cursor="arrow", state="disabled")
+        self._text = tk.Text(
+            container, wrap="word", font=("Consolas", 11),
+            relief="flat", padx=20, pady=15, bg="#F8F9FA",
+            cursor="arrow", state="disabled",
+        )
         sb = ttk.Scrollbar(container, orient="vertical", command=self._text.yview)
         self._text.configure(yscrollcommand=sb.set)
 
@@ -85,6 +95,9 @@ class JanelaDistribuicao(ttk.Frame):
 
         sb.pack(side=tk.RIGHT, fill="y")
         self._text.pack(side=tk.LEFT, fill="both", expand=True)
+
+        # ── Redesenha ao redimensionar (debounce 200 ms) ──────────
+        self._text.bind("<Configure>", self._agendar_atualizar)
 
     def _build_right_panel(self, parent) -> None:
         right = ttk.Frame(parent)
@@ -121,6 +134,37 @@ class JanelaDistribuicao(ttk.Frame):
         sb_pl.pack(side=tk.RIGHT, fill="y")
         self._pl_tree.pack(fill="both", expand=True)
 
+    # ─────────────────────── RESPONSIVIDADE ───────────────────────
+
+    def _agendar_atualizar(self, event=None) -> None:
+        """Debounce: cancela o job anterior e agenda novo em 200 ms."""
+        if self._resize_job:
+            self.after_cancel(self._resize_job)
+        self._resize_job = self.after(200, self._atualizar_se_dados)
+
+    def _atualizar_se_dados(self) -> None:
+        """Redesenha apenas se já há conteúdo renderizado."""
+        if self._text.get("1.0", "end-1c").strip():
+            self.atualizar()
+
+    def _chars_por_linha(self) -> int:
+        """
+        Calcula quantos caracteres Consolas 11 cabem na largura atual
+        do widget de texto, descontando os paddings internos.
+        """
+        largura_px = self._text.winfo_width()
+        if largura_px < 50:          # widget ainda não renderizado
+            return 52
+        padding_total = 40           # padx=20 dos dois lados
+        disponivel   = largura_px - padding_total
+        char_px = tkfont.Font(family="Consolas", size=11).measure("M")
+        if char_px == 0:
+            return 52
+        chars = disponivel // char_px
+        return max(_LARGURA_MIN, min(_LARGURA_MAX, chars))
+
+    # ─────────────────────── CONTEÚDO ─────────────────────────────
+
     def atualizar(self) -> None:
         self._escrever(self._montar_conteudo)
 
@@ -150,21 +194,26 @@ class JanelaDistribuicao(ttk.Frame):
 
         self._atualizar_saldo_label(saldo_usdt, preco_brl)
 
-        def brl(v):
+        # ── largura dinâmica ──────────────────────────────────────
+        L = w.largura   # alias curto; TextWriter já calculou ao ser criado
+
+        def brl(v: float) -> str:
             return f"  (≈ R$ {v * preco_brl:,.2f})" if preco_brl > 0 else ""
 
-        w.separador("═", 52)
         w.centralizado("  🥧  PORTFÓLIO  ", "titulo")
-        w.separador("═", 52)
         w.linha("")
 
-        w.par([("   💼 Cripto  : ", "dim"), (f"${total_cripto:>12,.2f}{brl(total_cripto)}", "valor")])
+        # ── resumo financeiro ────────────────────────────────────
+        w.par([("   💼 Cripto  : ", "dim"),
+               (f"${total_cripto:>12,.2f}{brl(total_cripto)}", "valor")])
         cor_s = "positivo" if saldo_usdt >= 0 else "negativo"
-        w.par([("   💵 Caixa   : ", "dim"), (f"${saldo_usdt:>12,.2f}{brl(saldo_usdt)}", cor_s)])
+        w.par([("   💵 Caixa   : ", "dim"),
+               (f"${saldo_usdt:>12,.2f}{brl(saldo_usdt)}", cor_s)])
         if saldo_usdt < 0:
             w.centralizado("⚠️  Saldo negativo!", "aviso")
-        w.separador("─", 52)
-        w.par([("   📊 Total   : ", "dim"), (f"${total_portfolio:>12,.2f}{brl(total_portfolio)}", "total")])
+        w.sep("─")
+        w.par([("   📊 Total   : ", "dim"),
+               (f"${total_portfolio:>12,.2f}{brl(total_portfolio)}", "total")])
         w.linha("")
 
         if not distribuicao:
@@ -172,58 +221,75 @@ class JanelaDistribuicao(ttk.Frame):
             self._limpar_paineis_direita()
             return
 
-        ordenados = sorted(distribuicao.items(), key=lambda x: x[1]["percentual"], reverse=True)
+        ordenados = sorted(distribuicao.items(),
+                           key=lambda x: x[1]["percentual"], reverse=True)
 
         self._cor_map = {
             m: _CORES_ATIVOS[i % len(_CORES_ATIVOS)]
             for i, (m, _) in enumerate(ordenados)
         }
 
-        w.separador("─", 52)
+        # ── tabela de posições ────────────────────────────────────
+        # Colunas: ATIVO | % | USD | QTD
+        # As duas últimas se expandem proporcionalmente ao espaço disponível.
+        # Largura reservada para colunas fixas: ativo(8) + %(10) = 18 chars + margens
+        col_ativo = 8
+        col_pct   = 10
+        restante  = max(20, L - col_ativo - col_pct - 6)   # 6 = margens/espaços
+        col_usd   = restante // 2
+        col_qtd   = restante - col_usd
+
+        w.sep("─")
         w.par([
-            (f"  {'ATIVO':<7}", "subtitulo"),
-            (f"{'%':>7}   ", "subtitulo"),
-            (f"{'USD':>12}   ", "subtitulo"),
-            (f"{'QTD':>12}", "subtitulo"),
+            (f"  {'ATIVO':<{col_ativo}}", "subtitulo"),
+            (f"{'%':>{col_pct}}   ",      "subtitulo"),
+            (f"{'USD':>{col_usd}}   ",    "subtitulo"),
+            (f"{'QTD':>{col_qtd}}",       "subtitulo"),
         ])
-        w.separador("─", 52)
+        w.sep("─")
 
         for moeda, dados in ordenados:
             pct = dados["percentual"]
             val = dados["valor_atual"]
             qtd = dados["quantidade"]
-            fmt = f"{qtd:>12.2f}" if moeda == "USDT" else f"{qtd:>12.6f}"
+            fmt_qtd = f"{qtd:>{col_qtd}.2f}" if moeda == "USDT" else f"{qtd:>{col_qtd}.6f}"
+
             cor_ponto = self._cor_map.get(moeda, "#333")
             tmp = f"_dot_{moeda}"
             self._text.tag_configure(tmp, foreground=cor_ponto,
                                      font=("Consolas", 13, "bold"))
             self._text.insert(tk.END, "  ● ", tmp)
+
             w.par([
-                (f"{moeda:<7}", "moeda"),
-                (f"{pct:>6.2f}%   ", "percentual"),
-                (f"${val:>11,.2f}   ", "valor"),
-                (fmt, "dim"),
+                (f"{moeda:<{col_ativo}}", "moeda"),
+                (f"{pct:>{col_pct}.2f}%   ", "percentual"),
+                (f"${val:>{col_usd},.2f}   ", "valor"),
+                (fmt_qtd, "dim"),
             ], _no_newline=True)
             self._text.insert(tk.END, "\n")
 
-        w.separador("─", 52)
+        w.sep("─")
         w.linha("")
 
+        # ── barra de alocação ─────────────────────────────────────
         w.linha("  📊 ALOCAÇÃO", "subtitulo")
         w.linha("")
-        max_pct = ordenados[0][1]["percentual"]
+        max_pct    = ordenados[0][1]["percentual"]
+        barra_max  = max(10, L - 20)   # chars disponíveis para a barra
         for moeda, dados in ordenados:
             pct   = dados["percentual"]
-            barra = "█" * int((pct / max_pct) * 28)
+            n_bar = int((pct / max_pct) * barra_max)
+            barra = "█" * n_bar
             w.par([
                 (f"  {moeda:<6} ", "moeda"),
-                (f"{barra:<28} ", "valor"),
+                (f"{barra:<{barra_max}} ", "valor"),
                 (f"{pct:>6.2f}%", "percentual"),
             ])
 
         w.linha("")
-        w.separador("─", 52)
+        w.sep("─")
 
+        # ── diversificação ────────────────────────────────────────
         n = len(distribuicao)
         label_div, cor_div = next(
             (lb, cor) for minv, lb, cor in _DIVERSIFICACAO if n >= minv
@@ -240,6 +306,8 @@ class JanelaDistribuicao(ttk.Frame):
 
         self._desenhar_donut(ordenados)
         self._atualizar_pl(operacoes, distribuicao)
+
+    # ─────────────────────── PAINEL DIREITO ───────────────────────
 
     def _desenhar_donut(self, ordenados: list) -> None:
         self._canvas.update_idletasks()
@@ -330,12 +398,16 @@ class JanelaDistribuicao(ttk.Frame):
         for row in self._pl_tree.get_children():
             self._pl_tree.delete(row)
 
+    # ─────────────────────── AUXILIARES ───────────────────────────
+
     def _atualizar_saldo_label(self, saldo: float, preco_brl: float) -> None:
         texto = f"Saldo:  ${saldo:,.2f} USDT"
         if preco_brl > 0:
             texto += f"  (≈ R$ {saldo * preco_brl:,.2f})"
-        self._saldo_label.config(text=texto,
-                                 foreground="#2E7D32" if saldo >= 0 else "#C62828")
+        self._saldo_label.config(
+            text=texto,
+            foreground="#2E7D32" if saldo >= 0 else "#C62828",
+        )
 
     def _popup_saldo_usdt(self) -> None:
         try:
@@ -380,10 +452,13 @@ class JanelaDistribuicao(ttk.Frame):
 
         if historico:
             for mov in reversed(historico):
-                d = datetime.strptime(mov["data"], "%Y-%m-%d %H:%M:%S").strftime("%d/%m/%Y %H:%M")
+                d = datetime.strptime(
+                    mov["data"], "%Y-%m-%d %H:%M:%S"
+                ).strftime("%d/%m/%Y %H:%M")
                 txt.insert(tk.END, f"[{d}]  ", "data")
                 txt.insert(tk.END, mov["descricao"] + "\n")
-                txt.insert(tk.END, f"   └─ saldo: ${mov['saldo_apos']:,.2f} USDT\n\n", "saldo")
+                txt.insert(tk.END,
+                            f"   └─ saldo: ${mov['saldo_apos']:,.2f} USDT\n\n", "saldo")
         else:
             txt.insert(tk.END, "Nenhuma movimentação registrada ainda.")
 
@@ -393,7 +468,7 @@ class JanelaDistribuicao(ttk.Frame):
         self._text.config(state="normal")
         self._text.delete("1.0", tk.END)
         try:
-            func(TextWriter(self._text))
+            func(TextWriter(self._text, self._chars_por_linha()))
         except Exception as e:
             logger.error(f"Erro ao renderizar distribuição: {e}")
             self._text.insert(tk.END, f"❌ Erro ao renderizar: {e}")
@@ -401,9 +476,25 @@ class JanelaDistribuicao(ttk.Frame):
             self._text.config(state="disabled")
 
 
+# ═══════════════════════════════════════════════════════════════════
+#  TextWriter  –  helper para escrita formatada no tk.Text
+# ═══════════════════════════════════════════════════════════════════
+
 class TextWriter:
-    def __init__(self, widget: tk.Text):
-        self._w = widget
+    """
+    Wraps um tk.Text e expõe helpers de escrita formatada.
+
+    Parâmetros
+    ----------
+    widget  : o tk.Text alvo
+    largura : número de caracteres por linha (calculado pelo chamador)
+    """
+
+    def __init__(self, widget: tk.Text, largura: int = 52):
+        self._w    = widget
+        self.largura = largura   # acessível externamente como `w.largura`
+
+    # ── primitivas ──────────────────────────────────────────────
 
     def linha(self, texto: str = "", tag: Optional[str] = None) -> None:
         self._w.insert(tk.END, texto + "\n", tag or "")
@@ -421,8 +512,9 @@ class TextWriter:
         if not _no_newline:
             self._w.insert(tk.END, "\n")
 
-    def separador(self, char: str = "─", largura: int = 52) -> None:
-        self._w.insert(tk.END, "  " + char * largura + "\n", "dim")
+    def sep(self, char: str = "─") -> None:
+        """Separador que ocupa toda a largura dinâmica do painel."""
+        self._w.insert(tk.END, "  " + char * self.largura + "\n", "dim")
 
     def centralizado(self, texto: str, tag: Optional[str] = None) -> None:
-        self._w.insert(tk.END, texto.center(56) + "\n", tag or "")
+        self._w.insert(tk.END, texto.center(self.largura + 4) + "\n", tag or "")

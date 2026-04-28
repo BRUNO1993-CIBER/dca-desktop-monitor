@@ -7,7 +7,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 class JanelaRegistro(ttk.Frame):
 
     def __init__(
@@ -19,85 +18,143 @@ class JanelaRegistro(ttk.Frame):
         moedas_suportadas: List[str],
         on_change: Optional[Callable] = None,
     ):
-        super().__init__(parent, padding="20")
+        super().__init__(parent)
         self._data_manager     = data_manager
         self._price_manager    = price_manager
         self._engine           = analysis_engine
         self._moedas           = moedas_suportadas
         self._on_change        = on_change or (lambda: None)
+        
+        # Define os estilos visuais
+        self._configurar_estilos()
         self._build_ui()
+
+    def _configurar_estilos(self):
+        style = ttk.Style()
+        
+        # Fontes mais modernas (Segoe UI é padrão Windows, Arial como fallback)
+        fonte_titulo = ("Segoe UI", 16, "bold")
+        fonte_label = ("Segoe UI", 11)
+        fonte_info = ("Segoe UI", 10)
+        
+        style.configure("Titulo.TLabel", font=fonte_titulo)
+        style.configure("Padrao.TLabel", font=fonte_label)
+        style.configure("Info.TLabel", font=fonte_info, foreground="#666666")
+        style.configure("Destaque.TLabel", foreground="#0052cc", font=("Segoe UI", 10, "bold"))
+        style.configure("Alerta.TLabel", font=("Segoe UI", 10, "bold"), foreground="#cc0000")
+        
+        style.configure("Accent.TButton", font=("Segoe UI", 12, "bold"))
+        style.configure("Acao.TButton", font=("Segoe UI", 10))
 
     def atualizar(self) -> None:
         self._atualizar_interface_venda()
 
     def _build_ui(self) -> None:
-        ttk.Label(self, text="Registrar Nova Operação",
-                  font=("Arial", 16, "bold")).pack(pady=(0, 20))
+        # Container principal com padding responsivo
+        main_container = ttk.Frame(self, padding="30 20 30 20")
+        main_container.pack(fill="both", expand=True)
 
-        form = ttk.Frame(self)
-        form.pack(pady=10)
-        self._build_form(form)
+        # Cabeçalho
+        header_frame = ttk.Frame(main_container)
+        header_frame.pack(fill="x", pady=(0, 20))
+        ttk.Label(
+            header_frame, 
+            text="Registrar Nova Operação", 
+            style="Titulo.TLabel"
+        ).pack(side="left")
 
-        style = ttk.Style()
-        style.configure("Accent.TButton", font=("Arial", 12, "bold"))
+        # Frame do formulário (com borda e título)
+        form_frame = ttk.LabelFrame(main_container, text="Detalhes da Transação", padding="20 20 20 20")
+        form_frame.pack(fill="both", expand=True, pady=10)
+        
+        self._build_form(form_frame)
 
+        # Botão Salvar (Centralizado na parte inferior)
+        btn_frame = ttk.Frame(main_container)
+        btn_frame.pack(fill="x", pady=(30, 10))
+        
         ttk.Button(
-            self, text="💾 Salvar Operação", command=self._salvar,
-            style="Accent.TButton", padding=(20, 10), cursor="hand2",
-        ).pack(pady=30)
+            btn_frame, 
+            text="💾 Salvar Operação", 
+            command=self._salvar,
+            style="Accent.TButton", 
+            cursor="hand2",
+        ).pack(ipady=5, ipadx=20) # ipady/ipadx deixam o botão mais "gordinho"
 
     def _build_form(self, parent: ttk.Frame) -> None:
-        ttk.Label(parent, text="Moeda:", font=("Arial", 11)).grid(
-            row=0, column=0, sticky="w", pady=5)
-        self._combo_moeda = ttk.Combobox(
-            parent, values=self._moedas, width=20, font=("Arial", 11))
-        self._combo_moeda.grid(row=0, column=1, pady=5, padx=10)
-        self._combo_moeda.bind("<<ComboboxSelected>>", self._ao_mudar_selecao)
+            # O SEGREDO ESTÁ AQUI: 
+            # Criamos um "container invisível" e usamos pack(expand=True) 
+            # Isso faz o bloco inteiro ficar perfeitamente centralizado na tela!
+            container = ttk.Frame(parent)
+            # anchor="n" significa "North" (Norte / Para cima)
+            container.pack(anchor="n", pady=20)
 
-        self._label_preco_atual = ttk.Label(
-            parent, text="", font=("Arial", 10), foreground="blue")
-        self._label_preco_atual.grid(row=0, column=2, padx=10)
+            # 1. Moeda
+            ttk.Label(container, text="Moeda:", style="Padrao.TLabel").grid(
+                row=0, column=0, sticky="e", pady=10, padx=(0, 15))
+            
+            self._combo_moeda = ttk.Combobox(
+                container, values=self._moedas, font=("Segoe UI", 11), state="readonly", width=22)
+            self._combo_moeda.grid(row=0, column=1, sticky="w", pady=10)
+            self._combo_moeda.bind("<<ComboboxSelected>>", self._ao_mudar_selecao)
 
-        ttk.Label(parent, text="Operação:", font=("Arial", 11)).grid(
-            row=1, column=0, sticky="w", pady=5)
-        self._combo_tipo = ttk.Combobox(
-            parent, values=["Compra", "Venda"], width=20, font=("Arial", 11))
-        self._combo_tipo.grid(row=1, column=1, pady=5, padx=10)
-        self._combo_tipo.set("Compra")
-        self._combo_tipo.bind("<<ComboboxSelected>>", self._ao_mudar_selecao)
+            self._label_preco_atual = ttk.Label(container, text="", style="Destaque.TLabel")
+            self._label_preco_atual.grid(row=0, column=2, sticky="w", padx=(15, 0))
 
-        ttk.Label(parent, text="Valor (USDT):", font=("Arial", 11)).grid(
-            row=2, column=0, sticky="w", pady=5)
-        self._entry_valor = ttk.Entry(parent, width=22, font=("Arial", 11))
-        self._entry_valor.grid(row=2, column=1, pady=5, padx=10)
-        self._entry_valor.bind("<KeyRelease>", self._calcular_quantidade)
+            # 2. Operação
+            ttk.Label(container, text="Operação:", style="Padrao.TLabel").grid(
+                row=1, column=0, sticky="e", pady=10, padx=(0, 15))
+                
+            self._combo_tipo = ttk.Combobox(
+                container, values=["Compra", "Venda"], font=("Segoe UI", 11), state="readonly", width=22)
+            self._combo_tipo.grid(row=1, column=1, sticky="w", pady=10)
+            self._combo_tipo.set("Compra")
+            self._combo_tipo.bind("<<ComboboxSelected>>", self._ao_mudar_selecao)
 
-        self._label_quantidade = ttk.Label(
-            parent, text="", font=("Arial", 10), foreground="gray")
-        self._label_quantidade.grid(row=2, column=2, padx=10)
+            # 3. Valor USDT
+            ttk.Label(container, text="Valor (USDT):", style="Padrao.TLabel").grid(
+                row=2, column=0, sticky="e", pady=10, padx=(0, 15))
+                
+            self._entry_valor = ttk.Entry(container, font=("Segoe UI", 11), width=24)
+            self._entry_valor.grid(row=2, column=1, sticky="w", pady=10)
+            self._entry_valor.bind("<KeyRelease>", self._calcular_quantidade)
 
-        ttk.Label(parent, text="Preço Unitário:", font=("Arial", 11)).grid(
-            row=3, column=0, sticky="w", pady=5)
-        self._entry_preco = ttk.Entry(parent, width=22, font=("Arial", 11))
-        self._entry_preco.grid(row=3, column=1, pady=5, padx=10)
-        self._entry_preco.bind("<KeyRelease>", self._calcular_quantidade)
+            self._label_quantidade = ttk.Label(container, text="", style="Info.TLabel")
+            self._label_quantidade.grid(row=2, column=2, sticky="w", padx=(15, 0))
 
-        ttk.Button(
-            parent, text="Usar Preço Atual", command=self._usar_preco_atual,
-            cursor="hand2",
-        ).grid(row=3, column=2, pady=5, padx=10, sticky="w")
+            # 4. Preço Unitário
+            ttk.Label(container, text="Preço Unitário:", style="Padrao.TLabel").grid(
+                row=3, column=0, sticky="e", pady=10, padx=(0, 15))
+                
+            self._entry_preco = ttk.Entry(container, font=("Segoe UI", 11), width=24)
+            self._entry_preco.grid(row=3, column=1, sticky="w", pady=10)
+            self._entry_preco.bind("<KeyRelease>", self._calcular_quantidade)
 
-        self._label_saldo_venda = ttk.Label(
-            parent, text="", font=("Arial", 10, "bold"), foreground="darkblue")
-        self._label_saldo_venda.grid(
-            row=4, column=0, columnspan=2, sticky="w", padx=5, pady=(10, 0))
+            ttk.Button(
+                container, text="Usar Preço Atual", 
+                command=self._usar_preco_atual,
+                style="Acao.TButton", cursor="hand2",
+            ).grid(row=3, column=2, sticky="w", padx=(15, 0), pady=10)
 
-        self._btn_vender_tudo = ttk.Button(
-            parent, text="Vender Tudo", command=self._vender_tudo, cursor="hand2")
-        self._btn_vender_tudo.grid(row=4, column=2, pady=(10, 0), padx=10, sticky="w")
+            # 5. Área Exclusiva para Venda (Escondida por padrão)
+            self._frame_venda = ttk.Frame(container)
+            # O columnspan=3 garante que o texto de venda fique alinhado com o formulário todo
+            self._frame_venda.grid(row=4, column=0, columnspan=3, pady=(15, 0))
 
-        self._label_saldo_venda.grid_remove()
-        self._btn_vender_tudo.grid_remove()
+            self._label_saldo_venda = ttk.Label(
+                self._frame_venda, text="", style="Destaque.TLabel")
+            self._label_saldo_venda.grid(row=0, column=0, sticky="w")
+
+            self._btn_vender_tudo = ttk.Button(
+                self._frame_venda, text="Vender Tudo", 
+                command=self._vender_tudo, style="Acao.TButton", cursor="hand2")
+            self._btn_vender_tudo.grid(row=0, column=1, sticky="w", padx=(15, 0))
+
+            self._frame_venda.grid_remove() # Oculta inicialmente
+
+    # =========================================================================
+    # A LÓGICA ABAIXO PERMANECE EXATAMENTE IGUAL PARA NÃO QUEBRAR O PROGRAMA
+    # =========================================================================
 
     def _ao_mudar_selecao(self, event=None) -> None:
         self._ao_selecionar_moeda()
@@ -141,21 +198,18 @@ class JanelaRegistro(ttk.Frame):
                     saldo_moeda = portfolio[moeda].get("quantidade_final", 0)
                 self._label_saldo_venda.config(
                     text=f"Saldo disponível: {saldo_moeda:.8f} {moeda}")
-                self._label_saldo_venda.grid()
-                self._btn_vender_tudo.grid()
+                
+                self._frame_venda.grid() # Mostra o bloco inteiro
             except Exception as e:
                 logger.error(f"Erro ao buscar saldo para venda: {e}")
-                self._label_saldo_venda.grid_remove()
-                self._btn_vender_tudo.grid_remove()
+                self._frame_venda.grid_remove()
         else:
-            self._label_saldo_venda.grid_remove()
-            self._btn_vender_tudo.grid_remove()
+            self._frame_venda.grid_remove()
 
     def _vender_tudo(self) -> None:
         moeda = self._combo_moeda.get()
         if not moeda or moeda == "USDT":
-            messagebox.showwarning("Ação inválida",
-                                   "Selecione uma criptomoeda para vender.")
+            messagebox.showwarning("Ação inválida", "Selecione uma criptomoeda para vender.")
             return
 
         operacoes = self._data_manager.carregar_operacoes()
@@ -164,14 +218,12 @@ class JanelaRegistro(ttk.Frame):
 
         saldo = portfolio.get(moeda, {}).get("quantidade_final", 0)
         if saldo < 1e-9:
-            messagebox.showinfo("Saldo Insuficiente",
-                                f"Você não possui saldo de {moeda} para vender.")
+            messagebox.showinfo("Saldo Insuficiente", f"Você não possui saldo de {moeda} para vender.")
             return
 
         preco_atual = self._price_manager.get_preco(moeda)
         if not preco_atual or preco_atual <= 0:
-            messagebox.showerror("Erro",
-                                 f"Não foi possível obter o preço atual de {moeda}.")
+            messagebox.showerror("Erro", f"Não foi possível obter o preço atual de {moeda}.")
             return
 
         self._entry_valor.delete(0, tk.END)
@@ -293,10 +345,11 @@ class JanelaRegistro(ttk.Frame):
             messagebox.showerror("Erro", f"Erro inesperado: {e}")
 
     def _limpar(self) -> None:
+        self._combo_moeda.set('')
+        self._combo_tipo.set('Compra')
         self._entry_valor.delete(0, tk.END)
         self._entry_preco.config(state="normal")
         self._entry_preco.delete(0, tk.END)
         self._label_quantidade.config(text="")
         self._label_preco_atual.config(text="")
-        self._label_saldo_venda.grid_remove()
-        self._btn_vender_tudo.grid_remove()
+        self._frame_venda.grid_remove() # Usa o novo frame unificado

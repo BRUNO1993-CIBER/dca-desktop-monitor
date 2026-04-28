@@ -30,41 +30,93 @@ class PortfolioDCA:
 
         self._criar_interface()
         self._iniciar_atualizacoes_automaticas()
+        
+        # Inicia a primeira atualização logo após a janela abrir
         self.janela.after(1000, self.atualizar_todas_as_analises)
 
     def _criar_interface(self) -> None:
-        self.janela = ThemedTk(theme="plastik")
+        # Tema 'arc' é minimalista, moderno e funciona perfeitamente em Linux e Windows
+        self.janela = ThemedTk(theme="arc")
         self.janela.withdraw()
-        self.janela.title("Portfolio DCA - Analise e Registro de Operacoes")
+        self.janela.title("Portfolio DCA - Análise e Registro de Operações")
         self.janela.minsize(1100, 700)
 
+        # Configuração de fonte padrão para deixar com cara de app moderno
+        style = ttk.Style(self.janela)
+        # Tenta usar Segoe UI (Windows), se não tiver usa Helvetica/Arial (Linux)
+        style.configure(".", font=("Segoe UI", 10)) 
+        style.configure("TNotebook.Tab", padding=[15, 5], font=("Segoe UI", 10, "bold"))
+
         self.notebook = ttk.Notebook(self.janela)
-        self.notebook.pack(fill="both", expand=True, padx=10, pady=10)
+        self.notebook.pack(fill="both", expand=True, padx=15, pady=15)
 
-        deps = (self.data_manager, self.price_manager, AnalysisEngine)
-
+        # =========================================================
+        # INJEÇÃO EXPLÍCITA DE DEPENDÊNCIAS (Fácil leitura e manutenção)
+        # =========================================================
+        
         self.aba_registro = JanelaRegistro(
-            self.notebook, *deps,
+            parent=self.notebook,
+            data_manager=self.data_manager,
+            price_manager=self.price_manager,
+            analysis_engine=AnalysisEngine,
             moedas_suportadas=self.MOEDAS,
             on_change=self.atualizar_todas_as_analises,
         )
-        self.aba_analise      = JanelaAnalise(self.notebook, *deps)
-        self.aba_distribuicao = JanelaDistribuicao(self.notebook, *deps)
-        self.aba_historico    = JanelaHistorico(self.notebook, *deps)
-        self.aba_edicao       = JanelaEdicao(
-            self.notebook, *deps,
+        
+        self.aba_analise = JanelaAnalise(
+            parent=self.notebook,
+            data_manager=self.data_manager,
+            price_manager=self.price_manager,
+            analysis_engine=AnalysisEngine
+        )
+        
+        self.aba_distribuicao = JanelaDistribuicao(
+            parent=self.notebook,
+            data_manager=self.data_manager,
+            price_manager=self.price_manager,
+            analysis_engine=AnalysisEngine
+        )
+        
+        self.aba_historico = JanelaHistorico(
+            parent=self.notebook,
+            data_manager=self.data_manager,
+            price_manager=self.price_manager,
+            analysis_engine=AnalysisEngine
+        )
+        
+        self.aba_edicao = JanelaEdicao(
+            parent=self.notebook,
+            data_manager=self.data_manager,
+            price_manager=self.price_manager,
+            analysis_engine=AnalysisEngine,
             on_change=self.atualizar_todas_as_analises,
         )
 
-        self.notebook.add(self.aba_registro,     text="Registrar Operacao")
-        self.notebook.add(self.aba_analise,      text="Analise Detalhada")
-        self.notebook.add(self.aba_distribuicao, text="Distribuicao")
-        self.notebook.add(self.aba_historico,    text="Historico de Operacoes")
-        self.notebook.add(self.aba_edicao,       text="Editar Transacao")
+        # Adiciona as abas no painel
+        self.notebook.add(self.aba_registro,     text="✏️ Registrar Operação")
+        self.notebook.add(self.aba_analise,      text="📊 Análise Detalhada")
+        self.notebook.add(self.aba_distribuicao, text="🥧 Distribuição")
+        self.notebook.add(self.aba_historico,    text="🕒 Histórico de Operações")
+        self.notebook.add(self.aba_edicao,       text="⚙️ Editar Transação")
 
-        self._status = ttk.Label(self.janela, text="Pronto", anchor=tk.W)
-        self._status.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=(0, 5))
+        # Barra de Status moderna no rodapé
+        status_frame = ttk.Frame(self.janela, relief="sunken", padding=(5, 2))
+        status_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        # Lado Esquerdo: Mensagens de atualização do sistema
+        self._status = ttk.Label(status_frame, text="Pronto", foreground="gray")
+        self._status.pack(side=tk.LEFT)
 
+        # Lado Direito: Assinatura do Desenvolvedor
+        self._assinatura = ttk.Label(
+            status_frame, 
+            text="Dev by Bruno Machado", 
+            foreground="gray", 
+            font=("Segoe UI", 9, "italic")
+        )
+        self._assinatura.pack(side=tk.RIGHT, padx=10)
+
+        # Maximiza a tela suportando Windows ('zoomed') e Linux ('-zoomed')
         def _mostrar_maximizada():
             self.janela.deiconify()
             try:
@@ -74,33 +126,47 @@ class PortfolioDCA:
 
         self.janela.after(1, _mostrar_maximizada)
 
+    def _atualizar_abas_seguro(self):
+        """Atualiza a parte gráfica de todas as abas de forma linear e segura"""
+        try:
+            self.aba_distribuicao.atualizar()
+            self.aba_historico.atualizar()
+            self.aba_edicao.atualizar()
+            self.aba_analise.atualizar_analise()
+            self._atualizar_status("Pronto")
+        except Exception as e:
+            logger.error(f"Erro ao desenhar atualização nas abas: {e}")
+            self._atualizar_status("Erro ao atualizar interface.")
+
     def atualizar_todas_as_analises(self) -> None:
         def worker():
             try:
-                self._atualizar_status("Atualizando precos...")
+                self._atualizar_status("🔄 Atualizando preços na Binance...")
                 self.price_manager.atualizar_precos(self.MOEDAS)
-                self._atualizar_status("Calculando analises...")
-                self.janela.after(0,   self.aba_distribuicao.atualizar)
-                self.janela.after(100, self.aba_historico.atualizar)
-                self.janela.after(200, self.aba_edicao.atualizar)
-                self.janela.after(300, self.aba_analise.atualizar_analise)
-                self._atualizar_status("Pronto")
+                
+                self._atualizar_status("⚙️ Calculando portfólio...")
+                
+                # Manda a Thread principal desenhar os gráficos sem travar
+                self.janela.after(0, self._atualizar_abas_seguro)
+                
             except Exception as e:
-                logger.error(f"Erro na atualizacao: {e}")
-                self._atualizar_status(f"Erro: {e}")
+                logger.error(f"Erro na requisição de atualização: {e}")
+                self._atualizar_status("⚠️ Erro de conexão com a API")
 
         threading.Thread(target=worker, daemon=True).start()
 
     def _iniciar_atualizacoes_automaticas(self) -> None:
         def worker():
             while not self._stop_updates:
-                try:
-                    if CCXT_AVAILABLE:
-                        self.price_manager.atualizar_precos(self.MOEDAS)
-                except Exception as e:
-                    logger.error(f"Erro na atualizacao automatica: {e}")
-                finally:
-                    time.sleep(60)
+                time.sleep(60) # Espera 60s antes de rodar a primeira vez
+                
+                if self._stop_updates:
+                    break
+                    
+                if CCXT_AVAILABLE:
+                    logger.info("Iniciando ciclo automático de atualização...")
+                    # Agora a interface gráfica é notificada e atualiza os visuais!
+                    self.atualizar_todas_as_analises()
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -122,20 +188,20 @@ class PortfolioDCA:
         try:
             self.janela.protocol("WM_DELETE_WINDOW", self._on_closing)
             self.aba_historico.atualizar()
-            logger.info("Aplicacao iniciada com sucesso")
+            logger.info("Aplicativo iniciado com sucesso.")
             self.janela.mainloop()
         except Exception as e:
-            logger.error(f"Erro durante execucao: {e}")
-            messagebox.showerror("Erro Fatal", f"Erro durante execucao: {e}")
+            logger.error(f"Erro fatal durante execução: {e}")
+            messagebox.showerror("Erro Fatal", f"O programa foi interrompido:\n{e}")
         finally:
             self._stop_updates = True
 
 
 if __name__ == "__main__":
-    print("Iniciando o Monitor de Portfolio DCA...")
+    print("Iniciando o Monitor de Portfólio DCA...")
     try:
         app = PortfolioDCA()
         app.executar()
     except Exception as e:
-        print(f"Erro ao iniciar aplicacao: {e}")
+        print(f"Erro crítico ao iniciar aplicação: {e}")
         input("Pressione Enter para sair...")
