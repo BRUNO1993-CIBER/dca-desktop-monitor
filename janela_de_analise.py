@@ -163,49 +163,60 @@ class JanelaAnalise(ttk.Frame):
         self.resumo_pl_geral.config(text=f"P/L GERAL: {self.formatar_valor_monetario(total_geral)}", foreground=cor_pl)
 
     def inserir_linha_analise(self, moeda, dados):
-        quantidade = dados.get('quantidade_final', 0)
-        pmc = dados.get('pmc_final', 0)
-        custo = dados.get('custo_posicao_final', 0)
-        preco_mercado = dados.get('preco_de_mercado', 0)
-        valor_atual = dados.get('valor_atual_posicao', 0)
-        pl_n_realizado = dados.get('lucro_nao_realizado', 0)
-        pl_realizado = dados.get('lucro_realizado', 0)
-        pl_total = dados.get('lucro_total', 0)
+            quantidade = dados.get('quantidade_final', 0)
+            pmc = dados.get('pmc_final', 0)
+            custo = dados.get('custo_posicao_final', 0)
+            preco_mercado = dados.get('preco_de_mercado', 0)
+            valor_atual = dados.get('valor_atual_posicao', 0)
+            pl_n_realizado = dados.get('lucro_nao_realizado', 0)
+            pl_realizado = dados.get('lucro_realizado', 0)
+            pl_total = dados.get('lucro_total', 0)
 
-        str_porcentagem = f"{(pl_n_realizado / custo * 100):+.2f}%" if custo > 0.000001 else "0.00%"
+            str_porcentagem = f"{(pl_n_realizado / custo * 100):+.2f}%" if custo > 0.000001 else "0.00%"
 
-        if moeda == 'USDT (Caixa)':
-            pl = getattr(self, '_usdt_pl_brl', None)
-            if self.display_currency == 'BRL' and pl:
-                taxa_brl = self.price_manager.preco_brl
-                pmc_fmt  = f"R${pl['pmc_brl']:,.4f}"
-                mkt_fmt  = f"R${taxa_brl:,.4f}"
-                custo    = f"R${pl['custo_posicao_brl']:,.2f}"
-                val_at   = f"R${pl['valor_atual_brl']:,.2f}"
-                pl_nr    = f"R${pl['lucro_nao_realizado_brl']:+,.2f}"
-                pl_re    = f"R${pl['lucro_realizado_brl']:+,.2f}"
-                pl_tot   = f"R${pl['lucro_total_brl']:+,.2f}"
-                pct      = f"{(pl['lucro_nao_realizado_brl'] / pl['custo_posicao_brl'] * 100):+.2f}%" if pl['custo_posicao_brl'] > 0 else "0.00%"
-                tag      = 'lucro' if pl['lucro_total_brl'] >= 0 else 'prejuizo'
-                valores  = (moeda, f"{quantidade:,.2f} USDT", pmc_fmt, mkt_fmt, custo, val_at, pl_nr, pl_re, pl_tot, pct)
+            if moeda == 'USDT (Caixa)':
+                pl       = getattr(self, '_usdt_pl_brl', None)
+                taxa_brl = self.price_manager.preco_brl or 1.0
+
+                if self.display_currency == 'BRL':
+                    valor_atual_brl = quantidade * taxa_brl  
+                    val_at_fmt      = f"R${valor_atual_brl:,.2f}"
+                    mkt_fmt         = f"R${taxa_brl:,.4f}"
+
+                    if pl and pl.get('pmc_brl', 0) > 0:
+                        pmc_fmt    = f"R${pl['pmc_brl']:,.4f}"
+                        custo_fmt  = f"R${pl['custo_posicao_brl']:,.2f}"
+                        pl_nr_fmt  = f"R${pl['lucro_nao_realizado_brl']:+,.2f}"
+                        pl_re_fmt  = f"R${pl['lucro_realizado_brl']:+,.2f}"
+                        pl_tot_fmt = f"R${pl['lucro_total_brl']:+,.2f}"
+                        pct        = f"{(pl['lucro_nao_realizado_brl'] / pl['custo_posicao_brl'] * 100):+.2f}%" if pl['custo_posicao_brl'] > 0 else "0.00%"
+                        tag        = 'lucro' if pl['lucro_total_brl'] >= 0 else 'prejuizo'
+                    else:
+                        pmc_fmt = custo_fmt = pl_nr_fmt = pl_re_fmt = pl_tot_fmt = "N/A"
+                        pct     = "0.00%"
+                        tag     = ''
+
+                    valores = (moeda, f"{quantidade:,.2f} USDT", pmc_fmt, mkt_fmt,
+                            custo_fmt, val_at_fmt, pl_nr_fmt, pl_re_fmt, pl_tot_fmt, pct)
+                else:
+                    valores = (
+                        moeda, f"{quantidade:,.2f} USDT", "N/A",
+                        self.formatar_preco(1.0), "N/A",
+                        self.formatar_valor_monetario(valor_atual),
+                        "N/A", "N/A", "N/A", "0.00%"
+                    )
+                    tag = ''
             else:
                 valores = (
-                    moeda, f"{quantidade:,.2f} USDT", "N/A", "N/A",
-                    self.formatar_preco(1.0), self.formatar_valor_monetario(valor_atual),
-                    "N/A", "N/A", "N/A", "0.00%"
+                    moeda, f"{quantidade:,.8f}",
+                    self.formatar_preco(pmc), self.formatar_preco(preco_mercado),
+                    self.formatar_valor_monetario(custo), self.formatar_valor_monetario(valor_atual),
+                    self.formatar_valor_monetario(pl_n_realizado), self.formatar_valor_monetario(pl_realizado),
+                    self.formatar_valor_monetario(pl_total), str_porcentagem
                 )
-                tag = ''
-        else:
-            valores = (
-                moeda, f"{quantidade:,.8f}",
-                self.formatar_preco(pmc), self.formatar_preco(preco_mercado),
-                self.formatar_valor_monetario(custo), self.formatar_valor_monetario(valor_atual),
-                self.formatar_valor_monetario(pl_n_realizado), self.formatar_valor_monetario(pl_realizado),
-                self.formatar_valor_monetario(pl_total), str_porcentagem
-            )
-            tag = 'lucro' if pl_total >= 0 else 'prejuizo'
+                tag = 'lucro' if pl_total >= 0 else 'prejuizo'
 
-        self.tree.insert('', 'end', values=valores, tags=(tag,))
+            self.tree.insert('', 'end', values=valores, tags=(tag,))
 
     def toggle_currency(self):
         self.display_currency = 'BRL' if self.brl_toggle_var.get() else 'USD'

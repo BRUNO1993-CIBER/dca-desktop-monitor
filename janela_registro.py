@@ -300,6 +300,8 @@ class JanelaRegistro(ttk.Frame):
 
             if preco <= 0:
                 raise InvalidOperation("Preço inválido")
+                
+            taxa_brl  = self._price_manager.preco_brl or 0.0
 
             if moeda == 'USDT':
                 quantidade = valor          
@@ -327,7 +329,8 @@ class JanelaRegistro(ttk.Frame):
 
             data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             operacao  = [data_hora, moeda, tipo, float(valor),
-                         float(preco), float(quantidade)]
+                         float(preco), float(quantidade), taxa_brl]
+                         
 
             if not self._data_manager.salvar_operacao(operacao):
                 messagebox.showerror("Erro", "Não foi possível salvar a operação.")

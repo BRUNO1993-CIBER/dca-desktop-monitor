@@ -18,12 +18,11 @@ except ImportError:
     logger.warning("A biblioteca 'ccxt' não está instalizada. Os preços das moedas não serão atualizados.")
     print("Para instalar, execute: pip install ccxt")
 
-
 class DataManager:
     def __init__(self, arquivo_csv: str = "meu_diario_operacoes.csv"):
         raiz_projeto = Path(__file__).parent.resolve()
         self.arquivo_csv = raiz_projeto / arquivo_csv
-        self.headers = ['Data', 'Moeda', 'Operacao', 'Valor_USDT', 'Preco', 'Quantidade']
+        self.headers = ['Data', 'Moeda', 'Operacao', 'Valor_USDT', 'Preco', 'Quantidade', 'Taxa_BRL']
 
     def criar_arquivo_se_necessario(self):
         if not os.path.exists(self.arquivo_csv):
@@ -48,6 +47,7 @@ class DataManager:
                                 raise ValueError(f"Campo obrigatório '{campo}' ausente ou vazio.")
                         linha['Quantidade'] = float(linha['Quantidade'])
                         linha['Valor_USDT'] = float(linha['Valor_USDT'])
+                        linha['Taxa_BRL']   = float(linha.get('Taxa_BRL') or 0) 
                         if linha['Operacao'].lower() not in ['compra', 'venda']:
                             raise ValueError(f"Operação inválida: {linha['Operacao']}")
                         operacoes_validas.append(linha)
@@ -355,61 +355,63 @@ class AnalysisEngine:
 
     @staticmethod
     def calcular_pl_usdt_brl(operacoes: List[Dict], preco_brl_atual: float) -> Dict | None:
-        """
-        P&L do saldo USDT em caixa frente ao BRL.
-        Requer que operações USDT tenham Preco > 1.1 (cotação BRL salva no momento do depósito).
-        Registros antigos com Preco = 1.0 movimentam o saldo mas não entram no custo BRL.
-        """
         if preco_brl_atual <= 0:
             return None
 
-        ops_usdt = [op for op in sorted(operacoes, key=lambda x: x['Data'])
-                    if op['Moeda'] == 'USDT']
-        if not ops_usdt:
-            return None
-
-        custo_brl      = Decimal('0')
+        custo_brl       = Decimal('0')
         quantidade_usdt = Decimal('0')
         lucro_realizado = Decimal('0')
-        pmc_brl        = Decimal('0')
-        ops_com_taxa   = 0
+        pmc_brl         = Decimal('0')
+        ops_com_taxa    = 0
 
-        for op in ops_usdt:
-            qtd      = Decimal(str(op['Quantidade']))
-            taxa_brl = Decimal(str(op.get('Preco', '1.0')))
+        for op in sorted(operacoes, key=lambda x: x['Data']):
+            taxa_brl = Decimal(str(op.get('Taxa_BRL') or 0))
             tipo     = op['Operacao']
+            moeda    = op['Moeda']
+            valor    = Decimal(str(op['Valor_USDT']))
 
             if taxa_brl <= Decimal('1.1'):
-                continue
+                continue  
 
             ops_com_taxa += 1
 
-            if tipo == 'compra':
-                custo_brl      += qtd * taxa_brl
-                quantidade_usdt += qtd
-                pmc_brl = custo_brl / quantidade_usdt if quantidade_usdt > 0 else Decimal('0')
-            elif tipo == 'venda' and quantidade_usdt > 0 and pmc_brl > 0:
-                custo_venda     = qtd * pmc_brl
-                lucro_realizado += (qtd * taxa_brl) - custo_venda
-                custo_brl       -= custo_venda
-                quantidade_usdt -= qtd
+            if moeda == 'USDT':
+                qtd = Decimal(str(op['Quantidade']))
+                if tipo == 'compra':
+                    custo_brl       += qtd * taxa_brl
+                    quantidade_usdt += qtd
+                    pmc_brl = custo_brl / quantidade_usdt if quantidade_usdt > 0 else Decimal('0')
+                elif tipo == 'venda' and quantidade_usdt > 0 and pmc_brl > 0:
+                    custo_venda      = qtd * pmc_brl
+                    lucro_realizado += (qtd * taxa_brl) - custo_venda
+                    custo_brl       -= custo_venda
+                    quantidade_usdt -= qtd
+            else:
+                if tipo == 'venda':
+                    custo_brl       += valor * taxa_brl
+                    quantidade_usdt += valor
+                    pmc_brl = custo_brl / quantidade_usdt if quantidade_usdt > 0 else Decimal('0')
+                elif tipo == 'compra' and quantidade_usdt > 0 and pmc_brl > 0:
+                    custo_venda      = valor * pmc_brl
+                    lucro_realizado += (valor * taxa_brl) - custo_venda
+                    custo_brl       -= custo_venda
+                    quantidade_usdt -= valor
 
         if ops_com_taxa == 0 or quantidade_usdt <= Decimal('1e-9'):
             return None
 
-        qtd_final    = float(quantidade_usdt)
-        custo_final  = float(custo_brl)
-        valor_atual  = qtd_final * preco_brl_atual
-        pl_nao_real  = valor_atual - custo_final
-        pl_realizado = float(lucro_realizado)
+        qtd_final   = float(quantidade_usdt)
+        custo_final = float(custo_brl)
+        valor_atual = qtd_final * preco_brl_atual
+        pl_nao_real = valor_atual - custo_final
 
         return {
-            'quantidade_usdt':        qtd_final,
-            'pmc_brl':                float(pmc_brl),
-            'custo_posicao_brl':      custo_final,
-            'valor_atual_brl':        valor_atual,
+            'quantidade_usdt':         qtd_final,
+            'pmc_brl':                 float(pmc_brl),
+            'custo_posicao_brl':       custo_final,
+            'valor_atual_brl':         valor_atual,
             'lucro_nao_realizado_brl': pl_nao_real,
-            'lucro_realizado_brl':    pl_realizado,
-            'lucro_total_brl':        pl_nao_real + pl_realizado,
-            'preco_brl_atual':        preco_brl_atual,
+            'lucro_realizado_brl':     float(lucro_realizado),
+            'lucro_total_brl':         pl_nao_real + float(lucro_realizado),
+            'preco_brl_atual':         preco_brl_atual,
         }
