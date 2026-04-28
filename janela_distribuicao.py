@@ -200,14 +200,14 @@ class JanelaDistribuicao(ttk.Frame):
         def brl(v: float) -> str:
             return f"  (≈ R$ {v * preco_brl:,.2f})" if preco_brl > 0 else ""
 
-        w.centralizado("  🥧  PORTFÓLIO  ", "titulo")
+        w.linha("   PORTFÓLIO  ⤵", "titulo")
         w.linha("")
 
         # ── resumo financeiro ────────────────────────────────────
-        w.par([("   💼 Cripto  : ", "dim"),
+        w.par([("   🪙 Cripto  : ", "dim"),
                (f"${total_cripto:>12,.2f}{brl(total_cripto)}", "valor")])
         cor_s = "positivo" if saldo_usdt >= 0 else "negativo"
-        w.par([("   💵 Caixa   : ", "dim"),
+        w.par([("   💼 Caixa   : ", "dim"),
                (f"${saldo_usdt:>12,.2f}{brl(saldo_usdt)}", cor_s)])
         if saldo_usdt < 0:
             w.centralizado("⚠️  Saldo negativo!", "aviso")

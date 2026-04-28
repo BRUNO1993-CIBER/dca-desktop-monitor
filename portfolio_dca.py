@@ -4,6 +4,8 @@
 import threading
 import time
 import logging
+import os
+import platform
 import tkinter as tk
 from tkinter import ttk, messagebox
 from ttkthemes import ThemedTk
@@ -17,7 +19,6 @@ from janela_registro import JanelaRegistro
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
 
 class PortfolioDCA:
 
@@ -40,6 +41,34 @@ class PortfolioDCA:
         self.janela.withdraw()
         self.janela.title("Portfolio DCA - Análise e Registro de Operações")
         self.janela.minsize(1100, 700)
+
+        # =========================================================
+        # CARREGAMENTO DO ÍCONE CROSS-PLATFORM (Windows / Linux)
+        # =========================================================
+        try:
+            # Pega a pasta onde este arquivo .py está, independente de qual PC seja
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            
+            # Monta o caminho exato: pasta_do_projeto/img/favicon.ico
+            caminho_icone_ico = os.path.join(base_dir, "img", "favicon.ico")
+            
+            # Procura também por um .png de backup caso exista no futuro
+            caminho_icone_png = os.path.join(base_dir, "img", "favicon.png")
+
+            if platform.system() == "Windows":
+                # No Windows o .ico funciona de forma nativa e perfeita
+                if os.path.exists(caminho_icone_ico):
+                    self.janela.iconbitmap(default=caminho_icone_ico)
+            else:
+                # No Linux (Ubuntu, Mint, etc), o Tkinter exige imagens .png
+                if os.path.exists(caminho_icone_png):
+                    icone_img = tk.PhotoImage(file=caminho_icone_png)
+                    self.janela.iconphoto(True, icone_img)
+                else:
+                    logger.info("Aviso: Para exibir o ícone no Linux, salve uma cópia como favicon.png na pasta img/")
+        except Exception as e:
+            logger.warning(f"Erro ignorado ao tentar carregar o ícone: {e}")
+
 
         # Configuração de fonte padrão para deixar com cara de app moderno
         style = ttk.Style(self.janela)
@@ -94,8 +123,8 @@ class PortfolioDCA:
 
         # Adiciona as abas no painel
         self.notebook.add(self.aba_registro,     text="✏️ Registrar Operação")
-        self.notebook.add(self.aba_analise,      text="📊 Análise Detalhada")
-        self.notebook.add(self.aba_distribuicao, text="🥧 Distribuição")
+        self.notebook.add(self.aba_analise,      text="📈 Análise Detalhada")
+        self.notebook.add(self.aba_distribuicao, text="📊 Distribuição")
         self.notebook.add(self.aba_historico,    text="🕒 Histórico de Operações")
         self.notebook.add(self.aba_edicao,       text="⚙️ Editar Transação")
 
