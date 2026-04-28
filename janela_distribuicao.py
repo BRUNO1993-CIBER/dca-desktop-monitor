@@ -15,7 +15,7 @@ _DIVERSIFICACAO = [
     (7, "🟢 Excelente", "#2E7D32"),
     (4, "🟡 Moderada",  "#F9A825"),
     (2, "🟠 Baixa",     "#E65100"),
-    (0, "🔴 Perigosa",  "#C62828"),
+    (0, "🔴 Mínima",  "#C62828"),
 ]
 
 class JanelaDistribuicao(ttk.Frame):
@@ -45,8 +45,8 @@ class JanelaDistribuicao(ttk.Frame):
             resumo_frame.pack(fill="x", pady=(0, 15))
 
             self._lbl_cripto = self._criar_card(resumo_frame, "🪙 Ativos (Cripto)", "#1565C0")
-            self._lbl_caixa = self._criar_card(resumo_frame, "💵 Caixa (USDT)", "#2E7D32")
-            self._lbl_total = self._criar_card(resumo_frame, "💰 Patrimônio Total", "#E65100")
+            self._lbl_caixa = self._criar_card(resumo_frame, "💰 Caixa (USDT)", "#2E7D32")
+            self._lbl_total = self._criar_card(resumo_frame, "💼 Patrimônio Total", "#E65100")
             self._lbl_status = self._criar_card(resumo_frame, "🎯 Diversificação", "#424242")
 
             main_body = ttk.Frame(self)
@@ -262,12 +262,19 @@ class JanelaDistribuicao(ttk.Frame):
 
         popup = tk.Toplevel(self)
         popup.title("📜 Extrato do Caixa USDT")
-        popup.geometry("650x450")
+
+        def _maximizar_popup():
+            try:
+                popup.state("zoomed")
+            except:
+                popup.attributes("-zoomed", True)
+
+        popup.after(1, _maximizar_popup)
 
         header_frame = ttk.Frame(popup, padding=15)
         header_frame.pack(fill="x")
 
-        texto_saldo = f"💵 Saldo Atual: ${saldo_atual:,.2f}"
+        texto_saldo = f"💰 Saldo Atual: ${saldo_atual:,.2f}"
         if preco_brl > 0:
             texto_saldo += f"  (R$ {saldo_atual * preco_brl:,.2f})"
 
@@ -276,11 +283,11 @@ class JanelaDistribuicao(ttk.Frame):
 
         cols = ("Data", "Descrição", "Saldo Atualizado")
         tree = ttk.Treeview(popup, columns=cols, show="headings", height=12)
-        tree.heading("Data", text="Data")
-        tree.heading("Descrição", text="Descrição")
-        tree.heading("Saldo Atualizado", text="Saldo Atualizado")
+        tree.heading("Data", text="Data", anchor="center")
+        tree.heading("Descrição", text="Descrição", anchor="center")
+        tree.heading("Saldo Atualizado", text="Saldo Atualizado", anchor="center")
         tree.column("Data", width=140, anchor="center")
-        tree.column("Descrição", width=330)
+        tree.column("Descrição", width=330, anchor="center") 
         tree.column("Saldo Atualizado", width=140, anchor="center")
 
         sb = ttk.Scrollbar(popup, orient="vertical", command=tree.yview)
