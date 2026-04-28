@@ -10,6 +10,9 @@ from ttkthemes import ThemedTk
 
 from backend import DataManager, PriceManager, AnalysisEngine, CCXT_AVAILABLE
 from janela_de_analise import JanelaAnalise
+from janela_historico import JanelaHistorico
+from janela_edicao import JanelaEdicao
+from janela_distribuicao import JanelaDistribuicao
 
 logger = logging.getLogger(__name__)
 
@@ -33,90 +36,45 @@ class PortfolioDCA:
         self.janela.title("Portfólio DCA - Análise e Registro de Operações")
         self.janela.minsize(1100, 700)
 
-        largura_janela = 1400
-        altura_janela = 800
-        tela_largura = self.janela.winfo_screenwidth()
-        tela_altura = self.janela.winfo_screenheight()
-        x = (tela_largura // 2) - (largura_janela // 2)
-        y = (tela_altura // 2) - (altura_janela // 2)
-
-        self.janela.geometry(f"{largura_janela}x{altura_janela}+{x}+{y}")
-
         self.notebook = ttk.Notebook(self.janela)
         self.notebook.pack(fill='both', expand=True, padx=10, pady=10)
 
         self.criar_aba_registro_operacao()
         self.criar_aba_portfolio()
-        self.criar_aba_distribuicao()
-        self.criar_aba_historico()
-        self.criar_aba_edicao()
+
+        self.aba_distribuicao = JanelaDistribuicao(
+            self.notebook, self.data_manager, self.price_manager, AnalysisEngine
+        )
+        self.notebook.add(self.aba_distribuicao, text="🥧 Distribuição")
+
+        self.aba_edicao = JanelaEdicao(
+            self.notebook,
+            self.data_manager,
+            self.price_manager,
+            AnalysisEngine,
+            on_change=self.atualizar_todas_as_analises,
+        )
+        self.notebook.add(self.aba_edicao, text="✏️ Editar Transação")
+
+        self.aba_historico = JanelaHistorico(
+            self.notebook,
+            self.data_manager,
+            self.price_manager,
+            AnalysisEngine,
+        )
+        self.notebook.add(self.aba_historico, text="📋 Histórico de Operações")
 
         self.status_label = ttk.Label(self.janela, text="Pronto", anchor=tk.W)
         self.status_label.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=(0, 5))
 
-        self.janela.after(1, self.janela.deiconify)
+        def mostrar_maximizada():
+            self.janela.deiconify()
+            try:
+                self.janela.state('zoomed')  # Windows
+            except:
+                self.janela.attributes('-zoomed', True)  # fallback Linux
 
-    def criar_aba_edicao(self):
-        frame = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(frame, text="✏️ Editar Transação")
-
-        self.tree_edicao = ttk.Treeview(
-            frame, columns=self.data_manager.headers, show="headings", height=15
-        )
-        for col in self.data_manager.headers:
-            self.tree_edicao.heading(col, text=col)
-            self.tree_edicao.column(col, width=120, anchor="center")
-        self.tree_edicao.pack(fill="both", expand=True, padx=10, pady=10)
-
-        form_frame = ttk.Frame(frame)
-        form_frame.pack(fill="x", padx=10, pady=5)
-
-        self.edicao_campos = {}
-        for i, col in enumerate(self.data_manager.headers):
-            ttk.Label(form_frame, text=col, font=("Arial", 10, "bold")).grid(row=0, column=i, padx=5, pady=2)
-            entry = ttk.Entry(form_frame, width=22, font=("Arial", 10))
-            entry.grid(row=1, column=i, padx=5)
-            self.edicao_campos[col] = entry
-
-        btn_frame = ttk.Frame(frame)
-        btn_frame.pack(pady=10)
-
-        ttk.Button(btn_frame, text="📥 Carregar Selecionada", command=self._carregar_transacao,
-                   style="Accent.TButton", cursor="hand2").pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="💾 Salvar Alterações", command=self._salvar_transacao_editada,
-                   cursor="hand2").pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="🗑️ Excluir Selecionada", command=self._excluir_transacao,
-                   cursor="hand2").pack(side=tk.LEFT, padx=5)
-
-        self._atualizar_lista_edicao()
-
-    def atualizar_distribuicao(self):
-        self.distribuicao_text.delete(1.0, tk.END)
-        try:
-            operacoes = self.data_manager.carregar_operacoes()
-            if not operacoes:
-                self.distribuicao_text.insert(tk.END, "📊 Nenhuma operação registrada ainda.\n\n")
-                self.distribuicao_text.insert(tk.END, "Registre suas operações na aba '✍️ Registrar Operação' para ver a distribuição do seu portfólio!")
-                return
-
-            saldo_info = AnalysisEngine.calcular_saldo_usdt(operacoes)
-            saldo_atual = saldo_info['saldo_atual']
-
-            preco_brl = self.price_manager.preco_brl
-            saldo_em_brl = saldo_atual * preco_brl
-
-            texto_saldo = f"Saldo: ${saldo_atual:,.2f} USDT"
-            if preco_brl > 0:
-                texto_saldo += f" (≈ R$ {saldo_em_brl:,.2f})"
-
-            self.saldo_usdt_label.config(text=texto_saldo)
-
-            resultado_distribuicao = AnalysisEngine.calcular_distribuicao_portfolio(operacoes, self.price_manager.precos_cache)
-            self._exibir_distribuicao(resultado_distribuicao, saldo_info)
-
-        except Exception as e:
-            logger.error(f"Erro ao calcular distribuição: {e}")
-            self.distribuicao_text.insert(tk.END, f"❌ Erro ao processar dados: {e}")
+        self.janela.after(1, mostrar_maximizada)
 
     def ao_mudar_selecao_formulario(self, event=None):
         self.ao_selecionar_moeda(event)
@@ -178,101 +136,6 @@ class PortfolioDCA:
 
         self.calcular_quantidade()
 
-    def _limpar_formulario_edicao(self):
-        for header, entry in self.edicao_campos.items():
-            entry.config(state='normal')
-            entry.delete(0, tk.END)
-        if hasattr(self, 'indice_editando'):
-            del self.indice_editando
-
-    def _excluir_transacao(self):
-        if not hasattr(self, "indice_editando"):
-            messagebox.showwarning("Seleção necessária", "Primeiro, carregue uma transação para excluir.")
-            return
-
-        confirm = messagebox.askyesno(
-            "Confirmar Exclusão",
-            "Tem certeza que deseja excluir esta transação?\nEsta ação não pode ser desfeita."
-        )
-        if not confirm:
-            return
-
-        if self.data_manager.excluir_operacao(self.indice_editando):
-            messagebox.showinfo("Sucesso", "Transação excluída com sucesso!")
-            self._limpar_formulario_edicao()
-            self.atualizar_todas_as_analises()
-        else:
-            messagebox.showerror("Erro", "Não foi possível excluir a transação.")
-
-    def _atualizar_lista_edicao(self):
-        for item in self.tree_edicao.get_children():
-            self.tree_edicao.delete(item)
-
-        operacoes = self.data_manager.carregar_operacoes()
-        for i, op in enumerate(operacoes):
-            valores = [op[h] for h in self.data_manager.headers]
-            self.tree_edicao.insert("", "end", iid=i, values=valores)
-
-    def _carregar_transacao(self):
-        item_selecionado = self.tree_edicao.selection()
-        if not item_selecionado:
-            messagebox.showwarning("Seleção necessária", "Selecione uma transação para editar.")
-            return
-
-        self._limpar_formulario_edicao()
-
-        item = item_selecionado[0]
-        indice = int(self.tree_edicao.index(item))
-        valores = self.tree_edicao.item(item, "values")
-
-        for h, v in zip(self.data_manager.headers, valores):
-            entry = self.edicao_campos[h]
-            entry.insert(0, v)
-            if h in ['Moeda', 'Operacao', 'Quantidade']:
-                entry.config(state='readonly')
-
-        self.indice_editando = indice
-
-    def _salvar_transacao_editada(self):
-        if not hasattr(self, "indice_editando"):
-            messagebox.showwarning("Nenhuma edição", "Nenhuma transação carregada para editar.")
-            return
-
-        try:
-            data = self.edicao_campos['Data'].get()
-            valor_usdt_str = self.edicao_campos['Valor_USDT'].get()
-            preco_str = self.edicao_campos['Preco'].get()
-
-            valor_usdt = Decimal(valor_usdt_str)
-            preco = Decimal(preco_str)
-
-            if valor_usdt <= 0 or preco <= 0:
-                messagebox.showerror("Erro de Validação", "Valor USDT e Preço devem ser maiores que zero.")
-                return
-
-            nova_quantidade = valor_usdt / preco
-
-            nova_op = {
-                'Data': data,
-                'Moeda': self.edicao_campos['Moeda'].get(),
-                'Operacao': self.edicao_campos['Operacao'].get(),
-                'Valor_USDT': float(valor_usdt),
-                'Preco': float(preco),
-                'Quantidade': float(nova_quantidade)
-            }
-
-            if self.data_manager.atualizar_operacao(self.indice_editando, nova_op):
-                messagebox.showinfo("Sucesso", "Transação atualizada com sucesso!")
-                self._limpar_formulario_edicao()
-                self.atualizar_todas_as_analises()
-            else:
-                messagebox.showerror("Erro", "Não foi possível atualizar a transação.")
-
-        except InvalidOperation:
-            messagebox.showerror("Erro de Validação", "Valor USDT e Preço devem ser números válidos.")
-        except Exception as e:
-            messagebox.showerror("Erro", f"Ocorreu um erro inesperado: {e}")
-
     def criar_aba_registro_operacao(self):
         frame = ttk.Frame(self.notebook, padding="20")
         self.notebook.add(frame, text="✍️ Registrar Operação")
@@ -328,190 +191,6 @@ class PortfolioDCA:
 
         self.label_saldo_venda.grid_remove()
         self.btn_vender_tudo.grid_remove()
-
-    def criar_aba_distribuicao(self):
-        frame = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(frame, text="🥧 Distribuição")
-
-        control_frame = ttk.Frame(frame)
-        control_frame.pack(fill='x', padx=10, pady=10)
-
-        ttk.Button(control_frame, text="🔄 Atualizar Distribuição", command=self.atualizar_distribuicao,
-                   style="Accent.TButton", cursor="hand2").pack(side=tk.LEFT)
-        ttk.Button(control_frame, text="💰 Saldo USDT", command=self.mostrar_saldo_usdt,
-                   cursor="hand2").pack(side=tk.LEFT, padx=(10, 0))
-
-        self.saldo_usdt_label = ttk.Label(control_frame, text="", font=("Arial", 10, "bold"), foreground='#2E7D32')
-        self.saldo_usdt_label.pack(side=tk.RIGHT)
-
-        self.distribuicao_text = tk.Text(frame, wrap='word', font=("Consolas", 11),
-                                         relief='flat', padx=15, pady=15, bg="#fafafa")
-        self.distribuicao_text.pack(fill='both', expand=True, padx=10, pady=(0, 10))
-
-        self.distribuicao_text.tag_configure("titulo", font=("Consolas", 14, "bold"), foreground="#2E7D32")
-        self.distribuicao_text.tag_configure("subtitulo", font=("Consolas", 12, "bold"), foreground="#1976D2")
-        self.distribuicao_text.tag_configure("moeda", font=("Consolas", 11, "bold"), foreground="#5D4037")
-        self.distribuicao_text.tag_configure("percentual", font=("Consolas", 11, "bold"), foreground="#D84315")
-        self.distribuicao_text.tag_configure("valor", foreground="#1565C0")
-        self.distribuicao_text.tag_configure("total", font=("Consolas", 12, "bold"), foreground="#E65100")
-        self.distribuicao_text.tag_configure("usdt_info", font=("Consolas", 11, "bold"), foreground="#2E7D32")
-        self.distribuicao_text.tag_configure("erro", foreground="red", font=("Consolas", 10, "bold"))
-
-    def criar_aba_historico(self):
-        frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(frame, text="📋 Histórico de Operações")
-
-        controls = ttk.Frame(frame)
-        controls.pack(fill='x', pady=(0, 10))
-
-        ttk.Button(controls, text="📂 Carregar Histórico", command=self.carregar_historico,
-                   style="Accent.TButton").pack(side=tk.LEFT)
-
-        cols = ('Data', 'Moeda', 'Operação', 'Valor USDT', 'Preço', 'Quantidade')
-        self.tree = ttk.Treeview(frame, columns=cols, show='headings', height=15)
-
-        for col in cols:
-            self.tree.heading(col, text=col)
-            width = 150 if col != 'Quantidade' else 120
-            self.tree.column(col, width=width, anchor=tk.CENTER)
-
-        self.tree.pack(fill='both', expand=True)
-        self.tree.tag_configure('compra', background='#e8f5e8')
-        self.tree.tag_configure('venda', background='#ffe8e8')
-
-    def mostrar_saldo_usdt(self):
-        try:
-            operacoes = self.data_manager.carregar_operacoes()
-            if not operacoes:
-                messagebox.showinfo("Saldo USDT", "Nenhuma operação registrada ainda.")
-                return
-
-            saldo_info = AnalysisEngine.calcular_saldo_usdt(operacoes)
-            historico = saldo_info['historico']
-            saldo_atual = saldo_info['saldo_atual']
-
-            janela_saldo = tk.Toplevel(self.janela)
-            janela_saldo.title("💰 Histórico Saldo USDT")
-            janela_saldo.geometry("600x400")
-
-            frame_saldo = ttk.Frame(janela_saldo, padding=10)
-            frame_saldo.pack(fill='x', padx=10, pady=10)
-
-            preco_brl = self.price_manager.preco_brl
-            saldo_em_brl = saldo_atual * preco_brl
-
-            texto_saldo_popup = f"💰 Saldo Atual: ${saldo_atual:,.2f} USDT"
-            if preco_brl > 0:
-                texto_saldo_popup += f"\n(≈ R$ {saldo_em_brl:,.2f})"
-
-            ttk.Label(frame_saldo, text=texto_saldo_popup, font=("Arial", 14, "bold"),
-                      foreground='#2E7D32').pack()
-
-            text_historico = tk.Text(janela_saldo, wrap='word', font=("Consolas", 10), bg='#fafafa')
-            text_historico.pack(fill='both', expand=True, padx=10, pady=(0, 10))
-
-            if historico:
-                text_historico.insert(tk.END, "📋 HISTÓRICO DE MOVIMENTAÇÕES:\n")
-                text_historico.insert(tk.END, "=" * 60 + "\n\n")
-
-                for mov in reversed(historico):
-                    data_formatada = datetime.strptime(mov['data'], '%Y-%m-%d %H:%M:%S').strftime('%d/%m/%Y %H:%M')
-                    text_historico.insert(tk.END, f"[{data_formatada}] ")
-                    text_historico.insert(tk.END, mov['descricao'])
-                    text_historico.insert(tk.END, f"\n   └─ Saldo após: ${mov['saldo_apos']:,.2f} USDT\n\n")
-            else:
-                text_historico.insert(tk.END, "Nenhuma movimentação registrada ainda.")
-
-        except Exception as e:
-            logger.error(f"Erro ao mostrar saldo USDT: {e}")
-            messagebox.showerror("Erro", f"Erro ao carregar histórico: {e}")
-
-    def _exibir_distribuicao(self, resultado: Dict, saldo_info: Dict = None):
-        self.distribuicao_text.delete(1.0, tk.END)
-        distribuicao = resultado['distribuicao']
-        total_investido = resultado['total_investido']
-
-        saldo_usdt = saldo_info['saldo_atual'] if saldo_info else 0
-        valor_total_portfolio = total_investido + saldo_usdt
-
-        preco_brl = self.price_manager.preco_brl
-
-        def converter_para_brl(valor_usdt):
-            if preco_brl > 0:
-                return f" (≈ R$ {valor_usdt * preco_brl:,.2f})"
-            return ""
-
-        if saldo_info:
-            self.distribuicao_text.insert(tk.END, "💰 INFORMAÇÕES USDT:\n", "usdt_info")
-            texto_caixa_usdt = f"   Saldo disponível (Caixa): ${saldo_usdt:,.2f} USDT"
-            if preco_brl > 0:
-                texto_caixa_usdt += f" (≈ R$ {saldo_usdt * preco_brl:,.2f})"
-            self.distribuicao_text.insert(tk.END, texto_caixa_usdt + "\n", "valor")
-            if saldo_usdt < 0:
-                self.distribuicao_text.insert(tk.END, "   ⚠️  ATENÇÃO: Saldo negativo!\n", "erro")
-            self.distribuicao_text.insert(tk.END, "\n")
-
-        if not distribuicao and saldo_usdt <= 0:
-            self.distribuicao_text.insert(tk.END, "📊 Nenhuma posição ativa encontrada.")
-            return
-
-        self.distribuicao_text.insert(tk.END, "=" * 70 + "\n")
-        self.distribuicao_text.insert(tk.END, "🥧 DISTRIBUIÇÃO DO PORTFÓLIO\n", "titulo")
-        self.distribuicao_text.insert(tk.END, "=" * 70 + "\n\n")
-
-        self.distribuicao_text.insert(tk.END, f"   Total Investido (Cripto): ${total_investido:,.2f}{converter_para_brl(total_investido)}\n")
-        self.distribuicao_text.insert(tk.END, f"   Saldo em Caixa (USDT):   ${saldo_usdt:,.2f}{converter_para_brl(saldo_usdt)}\n")
-        self.distribuicao_text.insert(tk.END, f"💰 Valor Total do Portfólio: ${valor_total_portfolio:,.2f}{converter_para_brl(valor_total_portfolio)}\n\n", "total")
-
-        moedas_ordenadas = sorted(distribuicao.items(), key=lambda x: x[1]['percentual'], reverse=True)
-
-        self.distribuicao_text.insert(tk.END, "📋 DISTRIBUIÇÃO POR ATIVO:\n", "subtitulo")
-        self.distribuicao_text.insert(tk.END, "-" * 70 + "\n")
-        self.distribuicao_text.insert(tk.END, f"{'ATIVO':<8} {'PERCENTUAL':<12} {'VALOR ATUAL ($)':<18} {'QUANTIDADE':<15}\n")
-        self.distribuicao_text.insert(tk.END, "-" * 70 + "\n")
-
-        for moeda, dados in moedas_ordenadas:
-            percentual = dados['percentual']
-            valor_atual = dados['valor_atual']
-            quantidade = dados['quantidade']
-
-            self.distribuicao_text.insert(tk.END, f"{moeda:<8}", "moeda")
-            self.distribuicao_text.insert(tk.END, f"{percentual:>7.2f}%    ", "percentual")
-            self.distribuicao_text.insert(tk.END, f"${valor_atual:>13,.2f}    ", "valor")
-            linha_quantidade = f"{quantidade:>10.2f}" if moeda == 'USDT' else f"{quantidade:>10.6f}"
-            self.distribuicao_text.insert(tk.END, linha_quantidade + "\n")
-
-        self.distribuicao_text.insert(tk.END, "-" * 70 + "\n\n")
-
-        self.distribuicao_text.insert(tk.END, "📊 GRÁFICO DE BARRAS:\n", "subtitulo")
-        self.distribuicao_text.insert(tk.END, "-" * 50 + "\n")
-
-        for moeda, dados in moedas_ordenadas:
-            percentual = dados['percentual']
-            barra = "█" * int((percentual / 100) * 40)
-            self.distribuicao_text.insert(tk.END, f"{moeda:<6}", "moeda")
-            self.distribuicao_text.insert(tk.END, f" [{barra:<40}] ", "valor")
-            self.distribuicao_text.insert(tk.END, f"{percentual:>6.2f}%\n", "percentual")
-
-        self.distribuicao_text.insert(tk.END, "\n")
-        self.distribuicao_text.insert(tk.END, "📈 RESUMO:\n", "subtitulo")
-        self.distribuicao_text.insert(tk.END, f"   • Número de ativos diferentes: {len(distribuicao)}\n")
-
-        if moedas_ordenadas:
-            self.distribuicao_text.insert(tk.END, f"   • Maior concentração: {moedas_ordenadas[0][0]} ({moedas_ordenadas[0][1]['percentual']:.2f}%)\n", "moeda")
-            if len(moedas_ordenadas) > 1:
-                self.distribuicao_text.insert(tk.END, f"   • Menor concentração: {moedas_ordenadas[-1][0]} ({moedas_ordenadas[-1][1]['percentual']:.2f}%)\n", "moeda")
-
-        if len(distribuicao) == 1:
-            diversificacao = "🔴 Portfólio 100% alocado em um ativo"
-        elif len(distribuicao) <= 3:
-            diversificacao = "🟡 Portfólio pouco diversificado"
-        elif len(distribuicao) <= 6:
-            diversificacao = "🟢 Portfólio moderadamente diversificado"
-        else:
-            diversificacao = "🟢 Portfólio bem diversificado"
-
-        self.distribuicao_text.insert(tk.END, f"   • Status: {diversificacao}\n\n")
 
     def salvar_operacao(self):
         erros = self._validar_campos_operacao()
@@ -598,29 +277,6 @@ class PortfolioDCA:
         self.quantidade_label.config(text="")
         self.preco_atual_label.config(text="")
 
-    def carregar_historico(self):
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        try:
-            operacoes = self.data_manager.carregar_operacoes()
-            if not operacoes:
-                return
-
-            operacoes.sort(key=lambda x: x['Data'], reverse=True)
-            for op in operacoes:
-                try:
-                    data_formatada = datetime.strptime(op['Data'], '%Y-%m-%d %H:%M:%S').strftime('%d/%m/%Y %H:%M')
-                    tag = ('compra',) if op['Operacao'] == 'compra' else ('venda',)
-                    self.tree.insert('', 'end', values=(
-                        data_formatada, op['Moeda'], op['Operacao'].title(),
-                        f"${float(op['Valor_USDT']):.2f}", f"${float(op['Preco']):.4f}",
-                        f"{float(op['Quantidade']):.6f}"
-                    ), tags=tag)
-                except Exception as e:
-                    logger.warning(f"Erro ao processar operação: {e}")
-        except Exception as e:
-            logger.error(f"Erro ao carregar histórico: {e}")
-            messagebox.showerror("Erro", f"Não foi possível carregar o histórico: {e}")
 
     def ao_selecionar_moeda(self, event=None):
         moeda = self.combo_moeda.get()
@@ -686,9 +342,9 @@ class PortfolioDCA:
                 self.atualizar_status("Atualizando preços...")
                 self.price_manager.atualizar_precos(self.moedas_suportadas)
                 self.atualizar_status("Calculando análises...")
-                self.janela.after(0, self.atualizar_distribuicao)
-                self.janela.after(100, self.carregar_historico)
-                self.janela.after(200, self._atualizar_lista_edicao)
+                self.janela.after(0, self.aba_distribuicao.atualizar)
+                self.janela.after(100, self.aba_historico.atualizar)   
+                self.janela.after(200, self.aba_edicao.atualizar)
                 self.janela.after(300, self.aba_analise.atualizar_analise)
                 self.atualizar_status("Análises atualizadas!")
             except Exception as e:
@@ -731,7 +387,7 @@ class PortfolioDCA:
     def executar(self):
         try:
             self.janela.protocol("WM_DELETE_WINDOW", self.on_closing)
-            self.carregar_historico()
+            self.janela.after(100, self.aba_historico.atualizar)
             logger.info("Aplicação iniciada com sucesso")
             self.janela.mainloop()
         except Exception as e:
