@@ -25,14 +25,12 @@ class JanelaRegistro(ttk.Frame):
         self._moedas           = moedas_suportadas
         self._on_change        = on_change or (lambda: None)
         
-        # Define os estilos visuais
         self._configurar_estilos()
         self._build_ui()
 
     def _configurar_estilos(self):
         style = ttk.Style()
         
-        # Fontes mais modernas (Segoe UI é padrão Windows, Arial como fallback)
         fonte_titulo = ("Segoe UI", 16, "bold")
         fonte_label = ("Segoe UI", 11)
         fonte_info = ("Segoe UI", 10)
@@ -50,7 +48,6 @@ class JanelaRegistro(ttk.Frame):
         self._atualizar_interface_venda()
 
     def _build_ui(self) -> None:
-        # Container principal com padding responsivo
         main_container = ttk.Frame(self, padding="30 20 30 20")
         main_container.pack(fill="both", expand=True)
 
@@ -63,13 +60,11 @@ class JanelaRegistro(ttk.Frame):
             style="Titulo.TLabel"
         ).pack(side="left")
 
-        # Frame do formulário (com borda e título)
         form_frame = ttk.LabelFrame(main_container, text="Detalhes da Transação", padding="20 20 20 20")
         form_frame.pack(fill="both", expand=True, pady=10)
         
         self._build_form(form_frame)
 
-        # Botão Salvar (Centralizado na parte inferior)
         btn_frame = ttk.Frame(main_container)
         btn_frame.pack(fill="x", pady=(30, 10))
         
@@ -79,14 +74,11 @@ class JanelaRegistro(ttk.Frame):
             command=self._salvar,
             style="Accent.TButton", 
             cursor="hand2",
-        ).pack(ipady=5, ipadx=20) # ipady/ipadx deixam o botão mais "gordinho"
+        ).pack(ipady=5, ipadx=20) 
 
     def _build_form(self, parent: ttk.Frame) -> None:
-            # O SEGREDO ESTÁ AQUI: 
-            # Criamos um "container invisível" e usamos pack(expand=True) 
-            # Isso faz o bloco inteiro ficar perfeitamente centralizado na tela!
+
             container = ttk.Frame(parent)
-            # anchor="n" significa "North" (Norte / Para cima)
             container.pack(anchor="n", pady=20)
 
             # 1. Moeda
@@ -136,9 +128,7 @@ class JanelaRegistro(ttk.Frame):
                 style="Acao.TButton", cursor="hand2",
             ).grid(row=3, column=2, sticky="w", padx=(15, 0), pady=10)
 
-            # 5. Área Exclusiva para Venda (Escondida por padrão)
             self._frame_venda = ttk.Frame(container)
-            # O columnspan=3 garante que o texto de venda fique alinhado com o formulário todo
             self._frame_venda.grid(row=4, column=0, columnspan=3, pady=(15, 0))
 
             self._label_saldo_venda = ttk.Label(
@@ -152,10 +142,6 @@ class JanelaRegistro(ttk.Frame):
 
             self._frame_venda.grid_remove() # Oculta inicialmente
 
-    # =========================================================================
-    # A LÓGICA ABAIXO PERMANECE EXATAMENTE IGUAL PARA NÃO QUEBRAR O PROGRAMA
-    # =========================================================================
-
     def _ao_mudar_selecao(self, event=None) -> None:
         self._ao_selecionar_moeda()
         self._atualizar_interface_venda()
@@ -166,11 +152,17 @@ class JanelaRegistro(ttk.Frame):
             return
 
         if moeda == "USDT":
-            self._label_preco_atual.config(text="Stablecoin: $1.00")
+            preco_brl = self._price_manager.preco_brl
+            if preco_brl and preco_brl > 1.1:
+                self._label_preco_atual.config(text=f"Cotação BRL: R${preco_brl:.4f}")
+                taxa = f"{preco_brl:.4f}"
+            else:
+                self._label_preco_atual.config(text="Cotação BRL indisponível")
+                taxa = "1.000000"
             self._entry_preco.config(state="normal")
             self._entry_preco.delete(0, tk.END)
-            self._entry_preco.insert(0, "1.000000")
-            self._entry_preco.config(state="disabled")
+            self._entry_preco.insert(0, taxa)
+            self._entry_preco.config(state="normal")
             self._calcular_quantidade()
             return
 
@@ -237,10 +229,14 @@ class JanelaRegistro(ttk.Frame):
         try:
             valor = float(self._entry_valor.get())
             preco = float(self._entry_preco.get())
+            moeda = self._combo_moeda.get()
             if valor > 0 and preco > 0:
-                qtd   = valor / preco
-                moeda = self._combo_moeda.get()
-                texto = f"= {qtd:.2f} USDT" if moeda == "USDT" else f"≈ {qtd:.6f} unidades"
+                if moeda == "USDT":
+                    qtd   = valor
+                    texto = f"= {qtd:.2f} USDT (taxa: R${preco:.4f})"
+                else:
+                    qtd   = valor / preco
+                    texto = f"≈ {qtd:.6f} unidades"
                 self._label_quantidade.config(text=texto)
             else:
                 self._label_quantidade.config(text="")
@@ -250,10 +246,16 @@ class JanelaRegistro(ttk.Frame):
     def _usar_preco_atual(self) -> None:
         moeda = self._combo_moeda.get()
         if moeda == "USDT":
+            preco_brl = self._price_manager.preco_brl
+            if preco_brl and preco_brl > 1.1:
+                taxa = f"{preco_brl:.4f}"
+            else:
+                messagebox.showwarning("Aviso", "Cotação BRL indisponível. Atualize os preços primeiro.")
+                taxa = "1.000000"
             self._entry_preco.config(state="normal")
             self._entry_preco.delete(0, tk.END)
-            self._entry_preco.insert(0, "1.000000")
-            self._entry_preco.config(state="disabled")
+            self._entry_preco.insert(0, taxa)
+            self._entry_preco.config(state="normal")
             self._calcular_quantidade()
             return
 
@@ -299,7 +301,10 @@ class JanelaRegistro(ttk.Frame):
             if preco <= 0:
                 raise InvalidOperation("Preço inválido")
 
-            quantidade = valor / preco
+            if moeda == 'USDT':
+                quantidade = valor          
+            else:
+                quantidade = valor / preco
 
             if tipo == "compra" and moeda != "USDT":
                 operacoes = self._data_manager.carregar_operacoes()
@@ -352,4 +357,4 @@ class JanelaRegistro(ttk.Frame):
         self._entry_preco.delete(0, tk.END)
         self._label_quantidade.config(text="")
         self._label_preco_atual.config(text="")
-        self._frame_venda.grid_remove() # Usa o novo frame unificado
+        self._frame_venda.grid_remove() 

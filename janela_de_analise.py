@@ -88,7 +88,9 @@ class JanelaAnalise(ttk.Frame):
                 resultado = self.analysis_engine.calcular_portfolio(
                     operacoes, self.price_manager.precos_cache
                 )
-
+                resultado['_usdt_pl_brl'] = self.analysis_engine.calcular_pl_usdt_brl(
+                    operacoes, self.price_manager.preco_brl
+                )
                 agora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
                 self.after(0, lambda: self.ultima_atualizacao_label.config(text=f"Última atualização: {agora}"))
                 self.after(0, lambda: self.exibir_resultado_analise(resultado))
@@ -116,7 +118,8 @@ class JanelaAnalise(ttk.Frame):
         if 'totais' in resultado:
             self.exibir_resumo_geral_labels(resultado['totais'])
 
-        moedas_dados = {m: d for m, d in resultado.items() if m != 'totais'}
+        moedas_dados = {m: d for m, d in resultado.items() if m not in ('totais', '_usdt_pl_brl')}
+        self._usdt_pl_brl = resultado.get('_usdt_pl_brl') 
         moedas_ordenadas = sorted(
             moedas_dados.items(),
             key=lambda item: item[1].get('valor_atual_posicao', 0),
@@ -172,12 +175,26 @@ class JanelaAnalise(ttk.Frame):
         str_porcentagem = f"{(pl_n_realizado / custo * 100):+.2f}%" if custo > 0.000001 else "0.00%"
 
         if moeda == 'USDT (Caixa)':
-            valores = (
-                moeda, f"{quantidade:,.2f} USDT", "N/A", "N/A",
-                self.formatar_preco(1.0), self.formatar_valor_monetario(valor_atual),
-                "N/A", "N/A", "N/A", "0.00%"
-            )
-            tag = ''
+            pl = getattr(self, '_usdt_pl_brl', None)
+            if self.display_currency == 'BRL' and pl:
+                taxa_brl = self.price_manager.preco_brl
+                pmc_fmt  = f"R${pl['pmc_brl']:,.4f}"
+                mkt_fmt  = f"R${taxa_brl:,.4f}"
+                custo    = f"R${pl['custo_posicao_brl']:,.2f}"
+                val_at   = f"R${pl['valor_atual_brl']:,.2f}"
+                pl_nr    = f"R${pl['lucro_nao_realizado_brl']:+,.2f}"
+                pl_re    = f"R${pl['lucro_realizado_brl']:+,.2f}"
+                pl_tot   = f"R${pl['lucro_total_brl']:+,.2f}"
+                pct      = f"{(pl['lucro_nao_realizado_brl'] / pl['custo_posicao_brl'] * 100):+.2f}%" if pl['custo_posicao_brl'] > 0 else "0.00%"
+                tag      = 'lucro' if pl['lucro_total_brl'] >= 0 else 'prejuizo'
+                valores  = (moeda, f"{quantidade:,.2f} USDT", pmc_fmt, mkt_fmt, custo, val_at, pl_nr, pl_re, pl_tot, pct)
+            else:
+                valores = (
+                    moeda, f"{quantidade:,.2f} USDT", "N/A", "N/A",
+                    self.formatar_preco(1.0), self.formatar_valor_monetario(valor_atual),
+                    "N/A", "N/A", "N/A", "0.00%"
+                )
+                tag = ''
         else:
             valores = (
                 moeda, f"{quantidade:,.8f}",

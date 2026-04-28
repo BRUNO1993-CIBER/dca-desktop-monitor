@@ -200,7 +200,7 @@ class JanelaDistribuicao(ttk.Frame):
         def brl(v: float) -> str:
             return f"  (≈ R$ {v * preco_brl:,.2f})" if preco_brl > 0 else ""
 
-        w.linha("   PORTFÓLIO  ⤵", "titulo")
+        w.linha("  PORTFÓLIO CRIPTO  ⤵", "titulo")
         w.linha("")
 
         # ── resumo financeiro ────────────────────────────────────

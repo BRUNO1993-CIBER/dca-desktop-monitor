@@ -351,3 +351,65 @@ class AnalysisEngine:
             'lucro_nao_realizado': lucro_nao_realizado, 'lucro_total': float(lucro_realizado) + lucro_nao_realizado,
             'preco_de_mercado': preco_atual
         }
+
+
+    @staticmethod
+    def calcular_pl_usdt_brl(operacoes: List[Dict], preco_brl_atual: float) -> Dict | None:
+        """
+        P&L do saldo USDT em caixa frente ao BRL.
+        Requer que operações USDT tenham Preco > 1.1 (cotação BRL salva no momento do depósito).
+        Registros antigos com Preco = 1.0 movimentam o saldo mas não entram no custo BRL.
+        """
+        if preco_brl_atual <= 0:
+            return None
+
+        ops_usdt = [op for op in sorted(operacoes, key=lambda x: x['Data'])
+                    if op['Moeda'] == 'USDT']
+        if not ops_usdt:
+            return None
+
+        custo_brl      = Decimal('0')
+        quantidade_usdt = Decimal('0')
+        lucro_realizado = Decimal('0')
+        pmc_brl        = Decimal('0')
+        ops_com_taxa   = 0
+
+        for op in ops_usdt:
+            qtd      = Decimal(str(op['Quantidade']))
+            taxa_brl = Decimal(str(op.get('Preco', '1.0')))
+            tipo     = op['Operacao']
+
+            if taxa_brl <= Decimal('1.1'):
+                continue
+
+            ops_com_taxa += 1
+
+            if tipo == 'compra':
+                custo_brl      += qtd * taxa_brl
+                quantidade_usdt += qtd
+                pmc_brl = custo_brl / quantidade_usdt if quantidade_usdt > 0 else Decimal('0')
+            elif tipo == 'venda' and quantidade_usdt > 0 and pmc_brl > 0:
+                custo_venda     = qtd * pmc_brl
+                lucro_realizado += (qtd * taxa_brl) - custo_venda
+                custo_brl       -= custo_venda
+                quantidade_usdt -= qtd
+
+        if ops_com_taxa == 0 or quantidade_usdt <= Decimal('1e-9'):
+            return None
+
+        qtd_final    = float(quantidade_usdt)
+        custo_final  = float(custo_brl)
+        valor_atual  = qtd_final * preco_brl_atual
+        pl_nao_real  = valor_atual - custo_final
+        pl_realizado = float(lucro_realizado)
+
+        return {
+            'quantidade_usdt':        qtd_final,
+            'pmc_brl':                float(pmc_brl),
+            'custo_posicao_brl':      custo_final,
+            'valor_atual_brl':        valor_atual,
+            'lucro_nao_realizado_brl': pl_nao_real,
+            'lucro_realizado_brl':    pl_realizado,
+            'lucro_total_brl':        pl_nao_real + pl_realizado,
+            'preco_brl_atual':        preco_brl_atual,
+        }

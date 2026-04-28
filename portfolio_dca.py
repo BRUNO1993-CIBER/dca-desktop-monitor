@@ -32,35 +32,25 @@ class PortfolioDCA:
         self._criar_interface()
         self._iniciar_atualizacoes_automaticas()
         
-        # Inicia a primeira atualização logo após a janela abrir
         self.janela.after(1000, self.atualizar_todas_as_analises)
 
     def _criar_interface(self) -> None:
-        # Tema 'arc' é minimalista, moderno e funciona perfeitamente em Linux e Windows
         self.janela = ThemedTk(theme="arc")
         self.janela.withdraw()
         self.janela.title("Portfolio DCA - Análise e Registro de Operações")
         self.janela.minsize(1100, 700)
 
-        # =========================================================
-        # CARREGAMENTO DO ÍCONE CROSS-PLATFORM (Windows / Linux)
-        # =========================================================
         try:
-            # Pega a pasta onde este arquivo .py está, independente de qual PC seja
             base_dir = os.path.dirname(os.path.abspath(__file__))
             
-            # Monta o caminho exato: pasta_do_projeto/img/favicon.ico
             caminho_icone_ico = os.path.join(base_dir, "img", "favicon.ico")
             
-            # Procura também por um .png de backup caso exista no futuro
             caminho_icone_png = os.path.join(base_dir, "img", "favicon.png")
 
             if platform.system() == "Windows":
-                # No Windows o .ico funciona de forma nativa e perfeita
                 if os.path.exists(caminho_icone_ico):
                     self.janela.iconbitmap(default=caminho_icone_ico)
             else:
-                # No Linux (Ubuntu, Mint, etc), o Tkinter exige imagens .png
                 if os.path.exists(caminho_icone_png):
                     icone_img = tk.PhotoImage(file=caminho_icone_png)
                     self.janela.iconphoto(True, icone_img)
@@ -70,18 +60,12 @@ class PortfolioDCA:
             logger.warning(f"Erro ignorado ao tentar carregar o ícone: {e}")
 
 
-        # Configuração de fonte padrão para deixar com cara de app moderno
         style = ttk.Style(self.janela)
-        # Tenta usar Segoe UI (Windows), se não tiver usa Helvetica/Arial (Linux)
         style.configure(".", font=("Segoe UI", 10)) 
         style.configure("TNotebook.Tab", padding=[15, 5], font=("Segoe UI", 10, "bold"))
 
         self.notebook = ttk.Notebook(self.janela)
         self.notebook.pack(fill="both", expand=True, padx=15, pady=15)
-
-        # =========================================================
-        # INJEÇÃO EXPLÍCITA DE DEPENDÊNCIAS (Fácil leitura e manutenção)
-        # =========================================================
         
         self.aba_registro = JanelaRegistro(
             parent=self.notebook,
@@ -121,22 +105,18 @@ class PortfolioDCA:
             on_change=self.atualizar_todas_as_analises,
         )
 
-        # Adiciona as abas no painel
         self.notebook.add(self.aba_registro,     text="✏️ Registrar Operação")
         self.notebook.add(self.aba_analise,      text="📈 Análise Detalhada")
         self.notebook.add(self.aba_distribuicao, text="📊 Distribuição")
         self.notebook.add(self.aba_historico,    text="🕒 Histórico de Operações")
         self.notebook.add(self.aba_edicao,       text="⚙️ Editar Transação")
 
-        # Barra de Status moderna no rodapé
         status_frame = ttk.Frame(self.janela, relief="sunken", padding=(5, 2))
         status_frame.pack(side=tk.BOTTOM, fill=tk.X)
         
-        # Lado Esquerdo: Mensagens de atualização do sistema
         self._status = ttk.Label(status_frame, text="Pronto", foreground="gray")
         self._status.pack(side=tk.LEFT)
 
-        # Lado Direito: Assinatura do Desenvolvedor
         self._assinatura = ttk.Label(
             status_frame, 
             text="Dev by Bruno Machado", 
@@ -145,7 +125,6 @@ class PortfolioDCA:
         )
         self._assinatura.pack(side=tk.RIGHT, padx=10)
 
-        # Maximiza a tela suportando Windows ('zoomed') e Linux ('-zoomed')
         def _mostrar_maximizada():
             self.janela.deiconify()
             try:
@@ -175,7 +154,6 @@ class PortfolioDCA:
                 
                 self._atualizar_status("⚙️ Calculando portfólio...")
                 
-                # Manda a Thread principal desenhar os gráficos sem travar
                 self.janela.after(0, self._atualizar_abas_seguro)
                 
             except Exception as e:
@@ -187,14 +165,13 @@ class PortfolioDCA:
     def _iniciar_atualizacoes_automaticas(self) -> None:
         def worker():
             while not self._stop_updates:
-                time.sleep(60) # Espera 60s antes de rodar a primeira vez
+                time.sleep(60) 
                 
                 if self._stop_updates:
                     break
                     
                 if CCXT_AVAILABLE:
                     logger.info("Iniciando ciclo automático de atualização...")
-                    # Agora a interface gráfica é notificada e atualiza os visuais!
                     self.atualizar_todas_as_analises()
 
         threading.Thread(target=worker, daemon=True).start()
