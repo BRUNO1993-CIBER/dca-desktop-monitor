@@ -293,7 +293,7 @@ class PortfolioDCA:
     def _iniciar_atualizacoes_automaticas(self) -> None:
         def worker():
             while not self._stop_updates:
-                time.sleep(60)
+                time.sleep(120)
                 if self._stop_updates:
                     break
                 if CCXT_AVAILABLE:

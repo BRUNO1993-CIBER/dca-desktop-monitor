@@ -1,4 +1,4 @@
-# Edição restrita a campo 'Data' por design intencional: qualquer alteração em Moeda,
+# Edição restrita a 'Data' e 'Taxa_BRL' por design intencional: qualquer alteração em Moeda,
 # Operação, Valor ou Preço invalida cálculos derivados (quantidade, médias, P&L).
 # A solução correta é excluir e reinserir — sem debt técnico de recálculo retroativo.
 
@@ -143,7 +143,8 @@ class JanelaEdicao(ttk.Frame):
                 font=("Segoe UI", 9, "bold"),
             ).grid(row=0, column=i, padx=10, pady=(0, 4), sticky="w")
 
-            entry = ttk.Entry(form_frame, width=16, style="Cripto.TEntry", font=("Segoe UI", 10), justify="center")
+            entry = ttk.Entry(form_frame, width=22, style="Cripto.TEntry", font=("Segoe UI", 12), justify="center")
+
             entry.grid(row=1, column=i, padx=10, sticky="ew")
             self._campos[col] = entry
 
@@ -151,32 +152,43 @@ class JanelaEdicao(ttk.Frame):
         obs_frame = tk.Frame(self, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
         obs_frame.pack(fill="x", padx=10, pady=(0, 8))
 
-        obs_icon = tk.Label(
-            obs_frame, text="🚨",
+        tk.Label(
+            obs_frame,
+            text="ATENÇÃO 🚨",
             bg=BG_CARD,
-            font=("Segoe UI", 11),
-            padx=10, pady=8,
-        )
-        obs_icon.pack(side=tk.LEFT, anchor="n")
+            fg=TEXT_PRIMARY,
+            font=("Segoe UI", 14, "bold"),
+            padx=6,
+            pady=10
+        ).pack(side=tk.LEFT, fill="y", anchor="center")
 
-        obs_text = (
-            "Somente a data e a taxa BRL podem ser corrigidas aqui.\n"
+        tk.Frame(obs_frame, bg=BORDER, width=1)\
+            .pack(side=tk.LEFT, fill="y", pady=6)
+
+        primeira_linha = "SOMENTE A DATA E A TAXA BRL PODEM SER CORRIGIDAS AQUI."
+        restante = (
             "Para ajustar moeda, valor, preço ou qualquer outro dado, exclua esta transação "
             "e a reinsira com as informações corretas — isso garante que todos os cálculos "
             "de quantidade, custo médio e P&L permaneçam precisos e consistentes."
         )
-        tk.Label(
-            obs_frame, text=obs_text,
-            bg=BG_CARD, fg=TEXT_SECONDARY,
-            font=("Segoe UI", 9),
-            wraplength=700,
-            justify="left",
-            padx=4, pady=8,
-        ).pack(side=tk.LEFT, fill="x", expand=True)
 
+        obs_text = f"{primeira_linha}\n{restante}"
+
+        tk.Label(
+            obs_frame,
+            text=obs_text,
+            bg=BG_CARD,
+            fg=TEXT_SECONDARY,
+            font=("Segoe UI", 9),
+            wraplength=800,
+            justify="left",
+            padx=6,
+            pady=10
+        ).pack(side=tk.LEFT, fill="x", expand=True)
+            
     def _build_buttons(self) -> None:
         btn_frame = tk.Frame(self, bg=BG_SURFACE)
-        btn_frame.pack(pady=10)
+        btn_frame.pack(pady=(12, 10)) 
 
         self.btn_load = ttk.Button(
             btn_frame, text="📥  Carregar Selecionada",
@@ -197,6 +209,7 @@ class JanelaEdicao(ttk.Frame):
         self.btn_delete.pack(side=tk.LEFT, padx=6)
 
     def atualizar(self) -> None:
+        # Bloqueia refresh automático de 60s enquanto usuário tem transação carregada
         if self._indice_editando is not None:
             return
 
@@ -204,10 +217,10 @@ class JanelaEdicao(ttk.Frame):
         self.btn_load.config(state="disabled")
         self.btn_save.config(state="disabled")
         self.btn_delete.config(state="disabled")
-        
+
         for item in self._tree.get_children():
             self._tree.delete(item)
-            
+
         threading.Thread(target=self._worker_carregar_dados, daemon=True).start()
 
     def _worker_carregar_dados(self) -> None:
@@ -230,7 +243,7 @@ class JanelaEdicao(ttk.Frame):
 
     def _renderizar_tree(self, ops_com_indice: list) -> None:
         self._mapa_indices.clear()
-        
+
         for visual_idx, (orig_idx, op) in enumerate(ops_com_indice):
             valores = []
             for h in self._data_manager.headers:
@@ -241,10 +254,11 @@ class JanelaEdicao(ttk.Frame):
                     except (ValueError, TypeError):
                         pass
                 valores.append(v)
-            
+
             tag = "par" if visual_idx % 2 == 0 else "impar"
             item_id = self._tree.insert("", "end", values=valores, tags=(tag,))
             self._mapa_indices[item_id] = orig_idx
+
         self.lbl_status.config(text="")
         self.btn_load.config(state="normal")
         self.btn_save.config(state="normal")
@@ -262,14 +276,12 @@ class JanelaEdicao(ttk.Frame):
         self._indice_editando = self._mapa_indices.get(item)
         valores = self._tree.item(item, "values")
 
-        # Armazena operação original para reuso no save (apenas Data será substituída)
         operacoes = self._data_manager.carregar_operacoes()
         self._op_original = operacoes[self._indice_editando]
 
         for col, valor in zip(self._data_manager.headers, valores):
             entry = self._campos[col]
             entry.config(state="normal")
-            # formata Taxa_BRL com 2 casas sempre
             valor_fmt = f"{float(valor):.2f}" if col == "Taxa_BRL" and valor != "" else valor
             entry.insert(0, valor_fmt)
             if col not in self._CAMPOS_EDITAVEIS:
@@ -287,8 +299,6 @@ class JanelaEdicao(ttk.Frame):
             datetime.strptime(nova_data, "%Y-%m-%d %H:%M:%S")
 
             campo_taxa = self._campos.get("Taxa_BRL")
-
-
             taxa_brl = round(float(campo_taxa.get().strip() or 0), 2) if campo_taxa else self._op_original.get("Taxa_BRL", 0.0)
 
             if taxa_brl != 0 and taxa_brl <= 1.1:
@@ -302,6 +312,8 @@ class JanelaEdicao(ttk.Frame):
 
             if self._data_manager.atualizar_operacao(self._indice_editando, nova_op):
                 messagebox.showinfo("Sucesso", "Transação atualizada com sucesso!")
+                self._indice_editando = None
+                self._op_original = None
                 self._on_change()
                 self.atualizar()
 
@@ -319,6 +331,8 @@ class JanelaEdicao(ttk.Frame):
         if messagebox.askyesno("Confirmar", "Tem certeza que deseja excluir?"):
             if self._data_manager.excluir_operacao(self._indice_editando):
                 messagebox.showinfo("Sucesso", "Excluído com sucesso!")
+                self._indice_editando = None
+                self._op_original = None
                 self._on_change()
                 self.atualizar()
 
