@@ -22,7 +22,7 @@ class JanelaCaixa(ttk.Frame):
         self.pack(fill="both", expand=True, padx=15, pady=15)
 
         toolbar = ttk.Frame(self)
-        toolbar.pack(fill="x", pady=(0, 10))
+        toolbar.pack(fill="x", pady=(10, 10))
 
         ttk.Button(toolbar, text="🔄 Atualizar Caixa", command=self.atualizar, cursor="hand2").pack(side=tk.LEFT)
         ttk.Checkbutton(

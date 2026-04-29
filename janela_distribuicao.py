@@ -32,7 +32,7 @@ class JanelaDistribuicao(ttk.Frame):
     def _build_ui(self):
         self.pack(fill="both", expand=True, padx=10, pady=10)
         toolbar = ttk.Frame(self)
-        toolbar.pack(fill="x", pady=(0, 10))
+        toolbar.pack(fill="x", pady=(10, 10))
 
         ttk.Button(toolbar, text="🔄 Atualizar Dashboard", command=self.atualizar, cursor="hand2").pack(side=tk.LEFT)
         ttk.Checkbutton(toolbar, text="Exibir em BRL", variable=self.brl_toggle_var, command=self.toggle_currency).pack(side=tk.LEFT, padx=15)
