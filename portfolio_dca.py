@@ -16,16 +16,15 @@ if platform.system() == "Windows":
         pass
 
 from backend import DataManager, PriceManager, AnalysisEngine, CCXT_AVAILABLE
-from janela_de_analise import JanelaAnalise
-from janela_historico import JanelaHistorico
 from janela_edicao import JanelaEdicao
 from janela_distribuicao import JanelaDistribuicao
 from janela_registro import JanelaRegistro
+from janela_caixa import JanelaCaixa
 from tema_cripto import (
     aplicar_tema,
-    BG_DEEP, BG_SURFACE, BG_CARD, BG_INPUT,
+    BG_DEEP, BG_CARD, BG_INPUT,
     BTC_ORANGE, NEON_GREEN, CYAN,
-    TEXT_PRIMARY, TEXT_SECONDARY, BORDER,
+    TEXT_SECONDARY,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -201,7 +200,7 @@ class PortfolioDCA:
         self._stop_updates = False
 
         self.janela = ThemedTk(theme="arc")
-        self.janela.title("Portfolio DCA — Análise e Registro de Operações")
+        self.janela.title("Portfolio DCA — Dashboard Interativo")
 
         self._criar_interface()
         self._preencher_dados_iniciais()
@@ -228,45 +227,17 @@ class PortfolioDCA:
         self.notebook = ttk.Notebook(self.janela)
         self.notebook.pack(fill="both", expand=True, padx=15, pady=15)
 
-        self.aba_registro = JanelaRegistro(
-            parent=self.notebook,
-            data_manager=self.data_manager,
-            price_manager=self.price_manager,
-            analysis_engine=AnalysisEngine,
-            moedas_suportadas=MOEDAS_SUPORTADAS,
-            on_change=self.atualizar_todas_as_analises,
-        )
-        self.aba_analise = JanelaAnalise(
-            parent=self.notebook,
-            data_manager=self.data_manager,
-            price_manager=self.price_manager,
-            analysis_engine=AnalysisEngine,
-        )
-        self.aba_distribuicao = JanelaDistribuicao(
-            parent=self.notebook,
-            data_manager=self.data_manager,
-            price_manager=self.price_manager,
-            analysis_engine=AnalysisEngine,
-        )
-        self.aba_historico = JanelaHistorico(
-            parent=self.notebook,
-            data_manager=self.data_manager,
-            price_manager=self.price_manager,
-            analysis_engine=AnalysisEngine,
-        )
-        self.aba_edicao = JanelaEdicao(
-            parent=self.notebook,
-            data_manager=self.data_manager,
-            price_manager=self.price_manager,
-            analysis_engine=AnalysisEngine,
-            on_change=self.atualizar_todas_as_analises,
-        )
+        # Abas do aplicativo
+        self.aba_distribuicao = JanelaDistribuicao(self.notebook, self.data_manager, self.price_manager, AnalysisEngine)
+        self.aba_caixa = JanelaCaixa(self.notebook, self.data_manager, self.price_manager, AnalysisEngine)
+        self.aba_registro = JanelaRegistro(self.notebook, self.data_manager, self.price_manager, AnalysisEngine, MOEDAS_SUPORTADAS, self.atualizar_todas_as_analises)
+        self.aba_edicao = JanelaEdicao(self.notebook, self.data_manager, self.price_manager, AnalysisEngine, self.atualizar_todas_as_analises)
 
+        # Adicionando as abas
+        self.notebook.add(self.aba_distribuicao, text="📈  Dashboard Geral")
+        self.notebook.add(self.aba_caixa,        text="💰  Caixa (USDT)")
         self.notebook.add(self.aba_registro,     text="✏️  Registrar Operação")
-        self.notebook.add(self.aba_analise,      text="📈  Análise Detalhada")
-        self.notebook.add(self.aba_distribuicao, text="📊  Distribuição")
-        self.notebook.add(self.aba_historico,    text="🕒  Histórico de Operações")
-        self.notebook.add(self.aba_edicao,       text="⚙️  Editar Transação")
+        self.notebook.add(self.aba_edicao,       text="⚙️  Histórico e Edição")
 
         status_frame = tk.Frame(self.janela, bg=BG_CARD, pady=4)
         status_frame.pack(side=tk.BOTTOM, fill=tk.X)
@@ -294,16 +265,15 @@ class PortfolioDCA:
             self.janela.attributes("-zoomed", True)
 
     def _preencher_dados_iniciais(self):
-        self.aba_historico.atualizar()
-        self.aba_analise.atualizar_analise()
-        self.aba_distribuicao.atualizar()
+            self.aba_caixa.atualizar()
+            self.aba_distribuicao.atualizar()
+            self.aba_edicao.atualizar()
 
     def _atualizar_abas_seguro(self):
         try:
             self.aba_distribuicao.atualizar()
-            self.aba_historico.atualizar()
+            self.aba_caixa.atualizar()
             self.aba_edicao.atualizar()
-            self.aba_analise.atualizar_analise()
             self._atualizar_status("● Pronto", NEON_GREEN)
         except Exception:
             self._atualizar_status("⚠ Erro ao atualizar interface.", "#e3b341")

@@ -191,7 +191,7 @@ class JanelaRegistro(ttk.Frame):
                 self._label_saldo_venda.config(
                     text=f"Saldo disponível: {saldo_moeda:.8f} {moeda}")
                 
-                self._frame_venda.grid() # Mostra o bloco inteiro
+                self._frame_venda.grid() 
             except Exception as e:
                 logger.error(f"Erro ao buscar saldo para venda: {e}")
                 self._frame_venda.grid_remove()
