@@ -109,7 +109,7 @@ class InicializadorSplash:
             pass
 
         tk.Label(
-            container, text="Portfolio DCA",
+            container, text="Portfolio CRIPTO",
             font=("Segoe UI", 22, "bold"),
             bg=BG_CARD, fg=BTC_ORANGE,
         ).pack()

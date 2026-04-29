@@ -91,20 +91,6 @@ class DataManager:
             logger.error(f"Erro ao atualizar operação: {e}")
             return False
 
-    def _validar_operacao(self, op: Dict) -> Dict | None:
-        try:
-            return {
-                'Data': op['Data'],
-                'Moeda': op['Moeda'].upper().strip(),
-                'Operacao': op['Operacao'].lower().strip(),
-                'Valor_USDT': float(op['Valor_USDT']),
-                'Preco': float(op['Preco']),
-                'Quantidade': float(op['Quantidade'])
-            }
-        except (ValueError, KeyError) as e:
-            logger.warning(f"Dados inválidos na operação: {e}")
-            return None
-
     def salvar_operacao(self, operacao: List) -> bool:
         try:
             self.criar_arquivo_se_necessario()

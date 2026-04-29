@@ -1,3 +1,7 @@
+# Edição restrita a campo 'Data' por design intencional: qualquer alteração em Moeda,
+# Operação, Valor ou Preço invalida cálculos derivados (quantidade, médias, P&L).
+# A solução correta é excluir e reinserir — sem debt técnico de recálculo retroativo.
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 from decimal import Decimal, InvalidOperation
@@ -40,7 +44,8 @@ def _garantir_estilo():
 
 class JanelaEdicao(ttk.Frame):
 
-    _CAMPOS_READONLY = {"Moeda", "Operacao", "Quantidade"}
+    # Todos os campos são somente-leitura; apenas 'Data' e 'Taxa_BRL' são editáveis.
+    _CAMPOS_EDITAVEIS = {"Data", "Taxa_BRL"}
 
     def __init__(
         self,
@@ -60,6 +65,7 @@ class JanelaEdicao(ttk.Frame):
         self._indice_editando: Optional[int] = None
         self._dados_carregados = False
         self._mapa_indices = {}
+        self._op_original: Optional[dict] = None
 
         self._build_ui()
         self.after(100, self.atualizar)
@@ -68,6 +74,7 @@ class JanelaEdicao(ttk.Frame):
         self._build_header()
         self._build_treeview()
         self._build_form()
+        self._build_obs()
         self._build_buttons()
 
     def _build_header(self) -> None:
@@ -106,10 +113,10 @@ class JanelaEdicao(ttk.Frame):
 
     def _build_form(self) -> None:
         outer = tk.Frame(self, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
-        outer.pack(fill="x", padx=10, pady=(0, 8))
+        outer.pack(fill="x", padx=10, pady=(0, 4))
 
         tk.Label(
-            outer, text="EDITAR TRANSAÇÃO",
+            outer, text="EDITAR TRANSAÇÃO ⬇",
             bg=BG_CARD, fg=BTC_ORANGE,
             font=("Segoe UI", 9, "bold"),
             padx=12, pady=6,
@@ -127,15 +134,45 @@ class JanelaEdicao(ttk.Frame):
         _garantir_estilo()
 
         for i, col in enumerate(self._data_manager.headers):
+            is_editavel = col in self._CAMPOS_EDITAVEIS
+            label_fg = TEXT_PRIMARY if is_editavel else TEXT_SECONDARY
+
             tk.Label(
                 form_frame, text=col,
-                bg=BG_CARD, fg=TEXT_SECONDARY,
+                bg=BG_CARD, fg=label_fg,
                 font=("Segoe UI", 9, "bold"),
             ).grid(row=0, column=i, padx=10, pady=(0, 4), sticky="w")
 
             entry = ttk.Entry(form_frame, width=16, style="Cripto.TEntry", font=("Segoe UI", 10), justify="center")
             entry.grid(row=1, column=i, padx=10, sticky="ew")
             self._campos[col] = entry
+
+    def _build_obs(self) -> None:
+        obs_frame = tk.Frame(self, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
+        obs_frame.pack(fill="x", padx=10, pady=(0, 8))
+
+        obs_icon = tk.Label(
+            obs_frame, text="🚨",
+            bg=BG_CARD,
+            font=("Segoe UI", 11),
+            padx=10, pady=8,
+        )
+        obs_icon.pack(side=tk.LEFT, anchor="n")
+
+        obs_text = (
+            "Somente a data e a taxa BRL podem ser corrigidas aqui.\n"
+            "Para ajustar moeda, valor, preço ou qualquer outro dado, exclua esta transação "
+            "e a reinsira com as informações corretas — isso garante que todos os cálculos "
+            "de quantidade, custo médio e P&L permaneçam precisos e consistentes."
+        )
+        tk.Label(
+            obs_frame, text=obs_text,
+            bg=BG_CARD, fg=TEXT_SECONDARY,
+            font=("Segoe UI", 9),
+            wraplength=700,
+            justify="left",
+            padx=4, pady=8,
+        ).pack(side=tk.LEFT, fill="x", expand=True)
 
     def _build_buttons(self) -> None:
         btn_frame = tk.Frame(self, bg=BG_SURFACE)
@@ -160,6 +197,9 @@ class JanelaEdicao(ttk.Frame):
         self.btn_delete.pack(side=tk.LEFT, padx=6)
 
     def atualizar(self) -> None:
+        if self._indice_editando is not None:
+            return
+
         self.lbl_status.config(text="🔄 Carregando histórico...")
         self.btn_load.config(state="disabled")
         self.btn_save.config(state="disabled")
@@ -192,12 +232,19 @@ class JanelaEdicao(ttk.Frame):
         self._mapa_indices.clear()
         
         for visual_idx, (orig_idx, op) in enumerate(ops_com_indice):
-            valores = [op.get(h, "") for h in self._data_manager.headers]
-            tag = "par" if visual_idx % 2 == 0 else "impar"
+            valores = []
+            for h in self._data_manager.headers:
+                v = op.get(h, "")
+                if h == "Taxa_BRL" and v != "":
+                    try:
+                        v = f"{float(v):.2f}"
+                    except (ValueError, TypeError):
+                        pass
+                valores.append(v)
             
+            tag = "par" if visual_idx % 2 == 0 else "impar"
             item_id = self._tree.insert("", "end", values=valores, tags=(tag,))
             self._mapa_indices[item_id] = orig_idx
-
         self.lbl_status.config(text="")
         self.btn_load.config(state="normal")
         self.btn_save.config(state="normal")
@@ -215,48 +262,54 @@ class JanelaEdicao(ttk.Frame):
         self._indice_editando = self._mapa_indices.get(item)
         valores = self._tree.item(item, "values")
 
+        # Armazena operação original para reuso no save (apenas Data será substituída)
+        operacoes = self._data_manager.carregar_operacoes()
+        self._op_original = operacoes[self._indice_editando]
+
         for col, valor in zip(self._data_manager.headers, valores):
             entry = self._campos[col]
             entry.config(state="normal")
-            entry.insert(0, valor)
-            if col in self._CAMPOS_READONLY:
+            # formata Taxa_BRL com 2 casas sempre
+            valor_fmt = f"{float(valor):.2f}" if col == "Taxa_BRL" and valor != "" else valor
+            entry.insert(0, valor_fmt)
+            if col not in self._CAMPOS_EDITAVEIS:
                 entry.config(state="readonly")
 
     def _salvar_edicao(self) -> None:
-        if self._indice_editando is None:
+        if self._indice_editando is None or self._op_original is None:
             messagebox.showwarning("Aviso", "Carregue uma transação.")
             return
 
         try:
-            data = self._campos["Data"].get().strip()
-            valor_usdt = Decimal(self._campos["Valor_USDT"].get().strip())
-            preco = Decimal(self._campos["Preco"].get().strip())
+            nova_data = self._campos["Data"].get().strip()
+            if not nova_data:
+                raise ValueError("Data vazia.")
+            datetime.strptime(nova_data, "%Y-%m-%d %H:%M:%S")
 
-            if not data or valor_usdt <= 0 or preco <= 0:
-                raise ValueError
-
-            moeda = self._campos["Moeda"].get()
-            nova_quantidade = valor_usdt if moeda == "USDT" else valor_usdt / preco
             campo_taxa = self._campos.get("Taxa_BRL")
-            taxa_brl = float(campo_taxa.get() or 0) if campo_taxa else 0.0
 
-            nova_op = {
-                "Data": data,
-                "Moeda": moeda,
-                "Operacao": self._campos["Operacao"].get(),
-                "Valor_USDT": float(valor_usdt),
-                "Preco": float(preco),
-                "Quantidade": float(nova_quantidade),
-                "Taxa_BRL": taxa_brl,
-            }
+
+            taxa_brl = round(float(campo_taxa.get().strip() or 0), 2) if campo_taxa else self._op_original.get("Taxa_BRL", 0.0)
+
+            if taxa_brl != 0 and taxa_brl <= 1.1:
+                messagebox.showerror(
+                    "Erro",
+                    "Taxa BRL inválida.\nUse o valor real do dólar (ex: 5.87).\nValores entre 0 e 1.10 são ignorados nos cálculos."
+                )
+                return
+
+            nova_op = {**self._op_original, "Data": nova_data, "Taxa_BRL": taxa_brl}
 
             if self._data_manager.atualizar_operacao(self._indice_editando, nova_op):
-                messagebox.showinfo("Sucesso", "Atualizado com sucesso!")
+                messagebox.showinfo("Sucesso", "Transação atualizada com sucesso!")
                 self._on_change()
                 self.atualizar()
 
-        except (InvalidOperation, ValueError):
-            messagebox.showerror("Erro", "Valores numéricos inválidos ou dados vazios.")
+        except ValueError:
+            messagebox.showerror(
+                "Erro",
+                "Dados inválidos.\nData: AAAA-MM-DD HH:MM:SS\nTaxa BRL: valor numérico"
+            )
 
     def _excluir_transacao(self) -> None:
         if self._indice_editando is None:
@@ -274,3 +327,4 @@ class JanelaEdicao(ttk.Frame):
             entry.config(state="normal")
             entry.delete(0, tk.END)
         self._indice_editando = None
+        self._op_original = None
