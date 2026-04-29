@@ -36,7 +36,7 @@ MOEDAS_SUPORTADAS = ["BTC", "ETH", "SOL", "XRP", "LINK", "SUI", "NEAR", "UNI", "
 class InicializadorSplash:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Portfolio DCA")
+        self.root.title("Portfolio CRIPTO")
         self.root.resizable(False, False)
         self.root.withdraw()
         self.root.configure(bg=BG_DEEP)
@@ -200,7 +200,7 @@ class PortfolioDCA:
         self._stop_updates = False
 
         self.janela = ThemedTk(theme="arc")
-        self.janela.title("Portfolio DCA — Dashboard Interativo")
+        self.janela.title("Portfolio CRIPTO — Dashboard Interativo")
 
         self._criar_interface()
         self._preencher_dados_iniciais()

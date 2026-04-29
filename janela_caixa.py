@@ -45,11 +45,11 @@ class JanelaCaixa(ttk.Frame):
         cols = ("Data", "Descrição", "Saldo Atualizado")
         self.tree = ttk.Treeview(tree_frame, columns=cols, show="headings", selectmode="none")
         self.tree.heading("Data", text="Data", anchor="center")
-        self.tree.heading("Descrição", text="Descrição", anchor="w")
+        self.tree.heading("Descrição", text="Descrição", anchor="center")
         self.tree.heading("Saldo Atualizado", text="Saldo Atualizado", anchor="center")
         
         self.tree.column("Data", width=160, anchor="center")
-        self.tree.column("Descrição", width=400, anchor="w")
+        self.tree.column("Descrição", width=400, anchor="center")
         self.tree.column("Saldo Atualizado", width=160, anchor="center")
 
         tag_cores_treeview(self.tree)
