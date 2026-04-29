@@ -82,7 +82,7 @@ class InicializadorSplash:
 
         base_dir = os.path.dirname(os.path.abspath(__file__))
 
-        caminho_bg = os.path.join(base_dir, "img", "988124.png")
+        caminho_bg = os.path.join(base_dir, "img", "912512.png")
         try:
             if os.path.exists(caminho_bg):
                 self.bg_image = tk.PhotoImage(file=caminho_bg)
