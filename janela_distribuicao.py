@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 from typing import Optional, Callable
 from datetime import datetime
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -174,41 +175,60 @@ class JanelaDistribuicao(ttk.Frame):
         self.after(100, self._desenhar_donut)
 
     def _desenhar_donut(self) -> None:
-        self._canvas.delete("all")
-        if not self._donut_dados:
-            return
+            self._canvas.delete("all")
+            if not self._donut_dados:
+                return
 
-        w = self._canvas.winfo_width()
-        h = self._canvas.winfo_height()
-        if w < 50 or h < 50:
-            return
+            w = self._canvas.winfo_width()
+            h = self._canvas.winfo_height()
+            if w < 50 or h < 50:
+                return
 
-        cx, cy = w // 2, h // 2
-        raio = min(cx, cy) - 2
-        furo = int(raio * 0.55)
-        inicio = -90.0
+            cx, cy = w // 2, h // 2
+            raio = min(cx, cy) - 2
+            furo = int(raio * 0.55)
+            inicio = -90.0
 
-        for moeda, dados in self._donut_dados:
-            grau = (dados["percentual"] / 100) * 360
-            cor = self._cor_map.get(moeda, "#999")
-            self._canvas.create_arc(
-                cx - raio, cy - raio, cx + raio, cy + raio,
-                start=inicio, extent=grau, fill=cor, outline="#F8F9FA", width=2
-            )
-            inicio += grau
+            for moeda, dados in self._donut_dados:
+                grau = (dados["percentual"] / 100) * 360
+                cor = self._cor_map.get(moeda, "#999")
+                
+                self._canvas.create_arc(
+                    cx - raio, cy - raio, cx + raio, cy + raio,
+                    start=inicio, extent=grau, fill=cor, outline="#F8F9FA", width=2
+                )
 
-        self._canvas.create_oval(cx - furo, cy - furo, cx + furo, cy + furo, fill="#F8F9FA", outline="#F8F9FA")
-        self._canvas.create_text(cx, cy - 10, text=str(len(self._donut_dados)), font=("Segoe UI", 18, "bold"), fill="#1A237E")
-        self._canvas.create_text(cx, cy + 12, text="ativos", font=("Segoe UI", 10), fill="#757575")
+                if dados["percentual"] >= 3.0:
+                    angulo_meio = inicio + (grau / 2)
+                    
+                    angulo_rad = math.radians(angulo_meio)
+                    
+                    raio_texto = furo + (raio - furo) / 2
+                    
+                    text_x = cx + raio_texto * math.cos(angulo_rad)
+                    text_y = cy - raio_texto * math.sin(angulo_rad)
+                    
+                    self._canvas.create_text(
+                        text_x, text_y, 
+                        text=moeda, 
+                        font=("Segoe UI", 9, "bold"), 
+                        fill="#FFFFFF"
+                    )
 
-        leg_x, leg_y = 15, 15
-        for moeda, dados in self._donut_dados:
-            cor = self._cor_map.get(moeda, "#999")
-            self._canvas.create_rectangle(leg_x, leg_y, leg_x + 10, leg_y + 10, fill=cor, outline="")
-            self._canvas.create_text(leg_x + 18, leg_y + 5, text=f"{moeda} {dados['percentual']:.1f}%", font=("Segoe UI", 9, "bold"), fill="#333", anchor="w")
-            leg_y += 18
-            if leg_y > h - 25:
-                break
+                inicio += grau
+
+            self._canvas.create_oval(cx - furo, cy - furo, cx + furo, cy + furo, fill="#F8F9FA", outline="#F8F9FA")
+            self._canvas.create_text(cx, cy - 10, text=str(len(self._donut_dados)), font=("Segoe UI", 18, "bold"), fill="#1A237E")
+            self._canvas.create_text(cx, cy + 12, text="ativos", font=("Segoe UI", 10), fill="#757575")
+
+            leg_x, leg_y = 15, 15
+            for moeda, dados in self._donut_dados:
+                cor = self._cor_map.get(moeda, "#999")
+                self._canvas.create_rectangle(leg_x, leg_y, leg_x + 10, leg_y + 10, fill=cor, outline="")
+                self._canvas.create_text(leg_x + 18, leg_y + 5, text=f"{moeda} {dados['percentual']:.1f}%", font=("Segoe UI", 9, "bold"), fill="#333", anchor="w")
+                leg_y += 18
+                if leg_y > h - 25:
+                    break
 
     def _atualizar_pl(self, operacoes: list, distribuicao: dict) -> None:
             portfolio = self._engine.calcular_portfolio(operacoes, self._price_manager.precos_cache)

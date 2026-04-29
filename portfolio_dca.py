@@ -70,30 +70,40 @@ class InicializadorSplash:
             pass
 
     def _construir_interface(self):
-        self.root.configure(bg="#f8f9fa")
-        
-        container = tk.Frame(self.root, bg="#ffffff", highlightbackground="#dee2e6", highlightthickness=2, padx=40, pady=30)
-        container.place(relx=0.5, rely=0.5, anchor="center")
+            self.root.configure(bg="#f8f9fa")
+            
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            
+            caminho_bg = os.path.join(base_dir, "img", "988124.png")
+            try:
+                if os.path.exists(caminho_bg):
+                    self.bg_image = tk.PhotoImage(file=caminho_bg)
+                    bg_label = tk.Label(self.root, image=self.bg_image)
+                    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+            except Exception as e:
+                logger.warning(f"Não foi possível carregar o fundo da splash: {e}")
 
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        caminho_png = os.path.join(base_dir, "img", "favicon.png")
-        
-        try:
-            if os.path.exists(caminho_png):
-                self._icone = tk.PhotoImage(file=caminho_png).subsample(2, 2)
-                tk.Label(container, image=self._icone, bg="#ffffff").pack(pady=(0, 15))
-        except Exception:
-            pass 
+            container = tk.Frame(self.root, bg="#ffffff", highlightbackground="#dee2e6", highlightthickness=2, padx=40, pady=30)
+            container.place(relx=0.5, rely=0.5, anchor="center")
 
-        tk.Label(container, text="Portfolio DCA", font=("Segoe UI", 20, "bold"), bg="#ffffff", fg="#212529").pack()
-        tk.Label(container, text="Carregando dados necessários...", font=("Segoe UI", 10, "italic"), bg="#ffffff", fg="#6c757d").pack(pady=(5, 20))
-        
-        self.lbl_status = tk.Label(container, text="Iniciando...", font=("Segoe UI", 11, "bold"), bg="#ffffff", fg="#0d6efd")
-        self.lbl_status.pack(pady=(10, 5))
-        
-        self.progresso = ttk.Progressbar(container, mode="indeterminate", length=350)
-        self.progresso.pack()
-        self.progresso.start(15)
+            caminho_png = os.path.join(base_dir, "img", "favicon.png")
+            
+            try:
+                if os.path.exists(caminho_png):
+                    self._icone = tk.PhotoImage(file=caminho_png).subsample(2, 2)
+                    tk.Label(container, image=self._icone, bg="#ffffff").pack(pady=(0, 15))
+            except Exception:
+                pass 
+
+            tk.Label(container, text="Portfolio DCA", font=("Segoe UI", 20, "bold"), bg="#ffffff", fg="#212529").pack()
+            tk.Label(container, text="Carregando dados necessários...", font=("Segoe UI", 10, "italic"), bg="#ffffff", fg="#6c757d").pack(pady=(5, 20))
+            
+            self.lbl_status = tk.Label(container, text="Iniciando...", font=("Segoe UI", 11, "bold"), bg="#ffffff", fg="#0d6efd")
+            self.lbl_status.pack(pady=(10, 5))
+            
+            self.progresso = ttk.Progressbar(container, mode="indeterminate", length=350)
+            self.progresso.pack()
+            self.progresso.start(15)
 
     def _carregar_dados(self):
         try:
