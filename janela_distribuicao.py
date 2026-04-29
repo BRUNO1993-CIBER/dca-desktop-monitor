@@ -65,7 +65,7 @@ class JanelaDistribuicao(ttk.Frame):
         aloc_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0), pady=(0, 10))
 
         cols_aloc = ("Ativo", "Alocação (%)", "Quantidade")
-        self._aloc_tree = ttk.Treeview(aloc_frame, columns=cols_aloc, show="headings", selectmode="none")
+        self._aloc_tree = ttk.Treeview(aloc_frame, columns=cols_aloc, show="headings", selectmode="browse")
         widths_aloc = {"Ativo": 70, "Alocação (%)": 90, "Quantidade": 100}
         for col in cols_aloc:
             self._aloc_tree.heading(col, text=col)
@@ -81,7 +81,7 @@ class JanelaDistribuicao(ttk.Frame):
         detalhe_frame.grid(row=1, column=0, columnspan=2, sticky="nsew")
 
         cols_det = ("Ativo", "Posição", "Preço Médio", "Preço Mercado", "Custo Posição", "Valor Atual", "P/L N. Realizado", "P/L Realizado", "P/L Total", "Ganho %")
-        self._det_tree = ttk.Treeview(detalhe_frame, columns=cols_det, show="headings", selectmode="none")
+        self._det_tree = ttk.Treeview(detalhe_frame, columns=cols_det, show="headings", selectmode="browse")
         for col in cols_det:
             self._det_tree.heading(col, text=col)
             self._det_tree.column(col, anchor="center", width=110)
