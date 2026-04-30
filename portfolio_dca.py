@@ -1,3 +1,7 @@
+# portifolio_dca.py — Portfolio CRIPTO | Entrypoint, splash screen e controller principal.
+# Countdown de atualização automática gerenciado via janela.after (main thread),
+# evitando race conditions com tkinter. Network/cálculo em daemon threads separados.
+
 import threading
 import time
 import logging
@@ -227,13 +231,11 @@ class PortfolioDCA:
         self.notebook = ttk.Notebook(self.janela)
         self.notebook.pack(fill="both", expand=True, padx=15, pady=15)
 
-        # Abas do aplicativo
         self.aba_distribuicao = JanelaDistribuicao(self.notebook, self.data_manager, self.price_manager, AnalysisEngine)
-        self.aba_caixa = JanelaCaixa(self.notebook, self.data_manager, self.price_manager, AnalysisEngine)
-        self.aba_registro = JanelaRegistro(self.notebook, self.data_manager, self.price_manager, AnalysisEngine, MOEDAS_SUPORTADAS, self.atualizar_todas_as_analises)
-        self.aba_edicao = JanelaEdicao(self.notebook, self.data_manager, self.price_manager, AnalysisEngine, self.atualizar_todas_as_analises)
+        self.aba_caixa        = JanelaCaixa(self.notebook, self.data_manager, self.price_manager, AnalysisEngine)
+        self.aba_registro     = JanelaRegistro(self.notebook, self.data_manager, self.price_manager, AnalysisEngine, MOEDAS_SUPORTADAS, self.atualizar_todas_as_analises)
+        self.aba_edicao       = JanelaEdicao(self.notebook, self.data_manager, self.price_manager, AnalysisEngine, self.atualizar_todas_as_analises)
 
-        # Adicionando as abas
         self.notebook.add(self.aba_distribuicao, text="📈  Dashboard Geral")
         self.notebook.add(self.aba_caixa,        text="💰  Caixa (USDT)")
         self.notebook.add(self.aba_registro,     text="✏️  Registrar Operação")
@@ -247,7 +249,7 @@ class PortfolioDCA:
         )
 
         self._status = tk.Label(
-            status_frame, text="● Pronto",
+            status_frame, text="● Iniciando...",
             bg=BG_CARD, fg=NEON_GREEN,
             font=("Segoe UI", 9), padx=10,
         )
@@ -265,18 +267,29 @@ class PortfolioDCA:
             self.janela.attributes("-zoomed", True)
 
     def _preencher_dados_iniciais(self):
-            self.aba_caixa.atualizar()
-            self.aba_distribuicao.atualizar()
-            self.aba_edicao.atualizar()
+        self.aba_caixa.atualizar()
+        self.aba_distribuicao.atualizar()
+        self.aba_edicao.atualizar()
 
-    def _atualizar_abas_seguro(self):
-        try:
-            self.aba_distribuicao.atualizar()
-            self.aba_caixa.atualizar()
-            self.aba_edicao.atualizar()
-            self._atualizar_status("● Pronto", NEON_GREEN)
-        except Exception:
-            self._atualizar_status("⚠ Erro ao atualizar interface.", "#e3b341")
+    def _iniciar_atualizacoes_automaticas(self) -> None:
+        self._countdown_ativo = True
+        self._countdown = 60
+        self._tick_countdown()
+
+    def _tick_countdown(self):
+        if not self._countdown_ativo:
+            return
+        if self._countdown > 0:
+            self._atualizar_status(f"● Próxima atualização em {self._countdown}s", TEXT_SECONDARY)
+            self._countdown -= 1
+            self.janela.after(1000, self._tick_countdown)
+        else:
+            if CCXT_AVAILABLE:
+                self.atualizar_todas_as_analises()
+
+    def _reiniciar_countdown(self):
+        self._countdown = 60
+        self._tick_countdown()
 
     def atualizar_todas_as_analises(self) -> None:
         def worker():
@@ -287,19 +300,20 @@ class PortfolioDCA:
                 self.janela.after(0, self._atualizar_abas_seguro)
             except Exception:
                 self._atualizar_status("✕ Erro de conexão com a API", "#ff4d4d")
+                self.janela.after(0, self._reiniciar_countdown)
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _iniciar_atualizacoes_automaticas(self) -> None:
-        def worker():
-            while not self._stop_updates:
-                time.sleep(120)
-                if self._stop_updates:
-                    break
-                if CCXT_AVAILABLE:
-                    self.atualizar_todas_as_analises()
-
-        threading.Thread(target=worker, daemon=True).start()
+    def _atualizar_abas_seguro(self):
+        try:
+            self.aba_distribuicao.atualizar()
+            self.aba_caixa.atualizar()
+            self.aba_edicao.atualizar()
+            self._atualizar_status("✓ Atualizado!", NEON_GREEN)
+        except Exception:
+            self._atualizar_status("⚠ Erro ao atualizar interface.", "#e3b341")
+        finally:
+            self._reiniciar_countdown()
 
     def _atualizar_status(self, mensagem: str, cor: str = TEXT_SECONDARY) -> None:
         def _update():
@@ -320,6 +334,7 @@ class PortfolioDCA:
             self._stop_updates = True
 
     def _on_closing(self) -> None:
+        self._countdown_ativo = False
         self._stop_updates = True
         self.janela.destroy()
 
