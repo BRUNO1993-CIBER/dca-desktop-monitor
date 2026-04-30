@@ -3,8 +3,9 @@ from tkinter import ttk, messagebox
 from typing import Optional, Callable
 from datetime import datetime
 import logging
-import math
 import threading
+
+from config.donut_chart import DonutChart
 
 from config.tema_cripto import (
     BG_DEEP, BG_CARD, BG_INPUT, BTC_ORANGE, NEON_GREEN, NEON_RED, CYAN, YELLOW,
@@ -22,15 +23,17 @@ class JanelaDistribuicao(ttk.Frame):
         self._data_manager = data_manager
         self._price_manager = price_manager
         self._engine = analysis_engine
-        self._cor_map = {}
-        self._donut_dados = []
+        
         self._usdt_pl_brl = {}
         self.display_currency = "USD"
         self.brl_toggle_var = tk.BooleanVar(value=False)
+        
         self._build_ui()
 
     def _build_ui(self):
         self.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # --- Barra de Ferramentas ---
         toolbar = ttk.Frame(self)
         toolbar.pack(fill="x", pady=(10, 10))
 
@@ -43,6 +46,7 @@ class JanelaDistribuicao(ttk.Frame):
         self.lbl_ultima_atualizacao = ttk.Label(toolbar, text="", font=("Segoe UI", 9), foreground=TEXT_SECONDARY)
         self.lbl_ultima_atualizacao.pack(side=tk.RIGHT)
 
+        # --- Cards de Resumo ---
         cards_frame = ttk.Frame(self)
         cards_frame.pack(fill="x", pady=(0, 10))
 
@@ -51,6 +55,7 @@ class JanelaDistribuicao(ttk.Frame):
         self._lbl_pl = self._criar_card(cards_frame, "📈 P/L Geral", NEON_GREEN)
         self._lbl_div = self._criar_card(cards_frame, "🎯 Diversificação", TEXT_SECONDARY)
 
+        # --- Corpo Principal (Gráficos e Tabelas) ---
         main_body = ttk.Frame(self)
         main_body.pack(fill="both", expand=True)
         main_body.columnconfigure(0, weight=2)
@@ -58,12 +63,15 @@ class JanelaDistribuicao(ttk.Frame):
         main_body.rowconfigure(0, weight=2)
         main_body.rowconfigure(1, weight=3)
 
+        # Gráfico Donut Isolado e Integrado
         donut_frame = ttk.LabelFrame(main_body, text=" Gráfico de Distribuição ", padding=10)
         donut_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=(0, 10))
-        self._canvas = tk.Canvas(donut_frame, bg=BG_CARD, highlightthickness=0)
-        self._canvas.pack(fill="both", expand=True)
-        self._canvas.bind("<Configure>", lambda e: self._agendar_donut())
+        
+        # Instanciação do nosso componente customizado
+        self.donut_chart = DonutChart(donut_frame)
+        self.donut_chart.pack(fill="both", expand=True)
 
+        # Tabela de Alocação
         aloc_frame = ttk.LabelFrame(main_body, text=" Resumo de Alocação ", padding=10)
         aloc_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0), pady=(0, 10))
 
@@ -80,6 +88,7 @@ class JanelaDistribuicao(ttk.Frame):
         sb_aloc.pack(side=tk.RIGHT, fill="y")
         self._aloc_tree.pack(fill="both", expand=True)
 
+        # Tabela Detalhada
         detalhe_frame = ttk.LabelFrame(main_body, text=" Análise Detalhada de P&L ", padding=10)
         detalhe_frame.grid(row=1, column=0, columnspan=2, sticky="nsew")
 
@@ -133,11 +142,12 @@ class JanelaDistribuicao(ttk.Frame):
         return f"${val:,.4f}"
 
     def atualizar(self):
+        """Dispara a busca de dados. Nota: o delete('all') do canvas foi removido daqui para evitar flickering"""
         self.lbl_ultima_atualizacao.config(text="🔄 Calculando...", foreground=CYAN)
         for t in (self._aloc_tree, self._det_tree):
             for row in t.get_children():
                 t.delete(row)
-        self._canvas.delete("all")
+                
         threading.Thread(target=self._worker_atualizar, daemon=True).start()
 
     def _worker_atualizar(self):
@@ -161,12 +171,14 @@ class JanelaDistribuicao(ttk.Frame):
         for lbl in (self._lbl_patrimonio, self._lbl_custo, self._lbl_pl, self._lbl_div):
             lbl.config(text="--", fg=TEXT_SECONDARY)
         self._det_tree.insert("", "end", values=("Nenhuma operação registrada.", *[""] * 9))
+        self.donut_chart.limpar()
 
     def _atualizar_ui(self, portfolio, usdt_pl, dist):
         agora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         self.lbl_ultima_atualizacao.config(text=f"Atualizado: {agora}", foreground=TEXT_SECONDARY)
         self._usdt_pl_brl = usdt_pl
 
+        # Atualização dos Cards
         if "totais" in portfolio:
             totais = portfolio["totais"]
             v_atual = totais["valor_atual"]
@@ -177,6 +189,7 @@ class JanelaDistribuicao(ttk.Frame):
             self._lbl_custo.config(text=self._fmt_val(i_liq))
             self._lbl_pl.config(text=self._fmt_val(pl_geral), fg=NEON_GREEN if pl_geral >= 0 else NEON_RED)
 
+        # Atualização da Tabela de Alocação e envio de dados para o DonutChart
         distribuicao = dist.get("distribuicao", {})
         if distribuicao:
             n_ativos = len(distribuicao)
@@ -184,19 +197,23 @@ class JanelaDistribuicao(ttk.Frame):
             self._lbl_div.config(text=lbl_txt, fg=cor_txt)
             
             ord_dist = sorted(distribuicao.items(), key=lambda x: x[1]["percentual"], reverse=True)
-            self._donut_dados = ord_dist
-            self._cor_map = {m: _CORES_ATIVOS[i % len(_CORES_ATIVOS)] for i, (m, _) in enumerate(ord_dist)}
             
+            # Gera o mapeamento de cores dinamicamente
+            cor_map = {m: _CORES_ATIVOS[i % len(_CORES_ATIVOS)] for i, (m, _) in enumerate(ord_dist)}
+            
+            # Preenche a Tabela TreeView
             for idx, (moeda, d) in enumerate(ord_dist):
                 qtd_fmt = f"{d['quantidade']:.2f}" if moeda == "USDT" else f"{d['quantidade']:.6f}"
                 tag = "par" if idx % 2 == 0 else "impar"
                 self._aloc_tree.insert("", "end", values=(moeda, f"{d['percentual']:.2f}%", qtd_fmt), tags=(tag,))
             
-            self._agendar_donut()
+            # Delega a responsabilidade de desenhar para o componente customizado
+            self.donut_chart.atualizar_dados(ord_dist, cor_map)
         else:
             self._lbl_div.config(text="--", fg=TEXT_SECONDARY)
-            self._donut_dados = []
+            self.donut_chart.limpar()
 
+        # Atualização da Tabela Detalhada
         moedas_dados = {m: d for m, d in portfolio.items() if m != "totais"}
         ord_port = sorted(moedas_dados.items(), key=lambda item: item[1].get("valor_atual_posicao", 0), reverse=True)
 
@@ -248,48 +265,6 @@ class JanelaDistribuicao(ttk.Frame):
             tag = ("lucro" if pos else "prejuizo") if par else ("lucro_alt" if pos else "prejuizo_alt")
 
         self._det_tree.insert("", "end", values=valores, tags=(tag,))
-
-    def _agendar_donut(self):
-        self.after(100, self._desenhar_donut)
-
-    def _desenhar_donut(self):
-        self._canvas.delete("all")
-        if not self._donut_dados: return
-        w, h = self._canvas.winfo_width(), self._canvas.winfo_height()
-        if w < 50 or h < 50: return
-        cx, cy, raio = w // 2, h // 2, min(w // 2, h // 2) - 2
-        furo, inicio = int(raio * 0.55), -90.0
-
-        for moeda, d in self._donut_dados:
-            grau, cor = (d["percentual"] / 100) * 360, self._cor_map.get(moeda, TEXT_MUTED)
-            self._canvas.create_arc(cx - raio, cy - raio, cx + raio, cy + raio, start=inicio, extent=grau, fill=cor, outline=BG_CARD, width=2)
-
-            if d["percentual"] >= 3.0:
-                ang_rad = math.radians(inicio + grau / 2)
-                raio_txt = furo + (raio - furo) / 2
-                tx = cx + raio_txt * math.cos(ang_rad)
-                ty = cy - raio_txt * math.sin(ang_rad)
-
-                angulo_texto = math.degrees(math.atan2(-(ty - cy), tx - cx))
-                if angulo_texto < -90:
-                    angulo_texto += 180
-                elif angulo_texto > 90:
-                    angulo_texto -= 180
-
-                self._canvas.create_text(tx, ty, text=moeda, font=("Segoe UI", 9, "bold"), fill=BG_DEEP, angle=angulo_texto)
-
-            inicio += grau
-
-        self._canvas.create_oval(cx - furo, cy - furo, cx + furo, cy + furo, fill=BG_CARD, outline=BG_CARD)
-        self._canvas.create_text(cx, cy - 10, text=str(len(self._donut_dados)), font=("Segoe UI", 18, "bold"), fill=BTC_ORANGE)
-        self._canvas.create_text(cx, cy + 12, text="ativos", font=("Segoe UI", 10), fill=TEXT_SECONDARY)
-
-        leg_y = 15
-        for moeda, d in self._donut_dados:
-            self._canvas.create_rectangle(15, leg_y, 25, leg_y + 10, fill=self._cor_map.get(moeda, TEXT_MUTED), outline="")
-            self._canvas.create_text(33, leg_y + 5, text=f"{moeda} {d['percentual']:.1f}%", font=("Segoe UI", 9, "bold"), fill=TEXT_PRIMARY, anchor="w")
-            leg_y += 18
-            if leg_y > h - 25: break
 
     def set_countdown(self, segundos: int) -> None:
         self.lbl_countdown.config(text=f"| próxima atualização em {segundos}s" if segundos > 0 else "")
