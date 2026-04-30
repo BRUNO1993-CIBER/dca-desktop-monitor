@@ -11,6 +11,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from ttkthemes import ThemedTk
 from concurrent.futures import ThreadPoolExecutor
+import json
 
 if platform.system() == "Windows":
     try:
@@ -34,8 +35,15 @@ from tema_cripto import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-MOEDAS_SUPORTADAS = ["BTC", "ETH", "SOL", "XRP", "LINK", "SUI", "NEAR", "UNI", "USDT"]
 
+def _carregar_config() -> dict:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    caminho = os.path.join(base_dir, "config", "config.json")
+    with open(caminho, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+CONFIG = _carregar_config()
+MOEDAS_SUPORTADAS = CONFIG["moedas"]
 
 class InicializadorSplash:
     def __init__(self):
@@ -273,7 +281,7 @@ class PortfolioDCA:
 
     def _iniciar_atualizacoes_automaticas(self) -> None:
         self._countdown_ativo = True
-        self._countdown = 60
+        self._countdown = CONFIG["intervalo_atualizacao"]
         self._tick_countdown()
 
     def _tick_countdown(self):
@@ -289,7 +297,7 @@ class PortfolioDCA:
                 self.atualizar_todas_as_analises()
 
     def _reiniciar_countdown(self):
-        self._countdown = 60
+        self._countdown = CONFIG["intervalo_atualizacao"]
         self._tick_countdown()
 
     def atualizar_todas_as_analises(self) -> None:
