@@ -27,8 +27,7 @@ Ele busca preços em tempo real da Binance para fornecer uma análise precisa e 
 
 ## 🚀 Demonstração
 
-Visão geral da interface, mostrando o DASHBOARD.
-
+Visão geral da interface, mostrando o DASHBOARD >>
 ![Demonstração do App](img/demo.png)
 
 ## 🛠️ Tecnologias Utilizadas
