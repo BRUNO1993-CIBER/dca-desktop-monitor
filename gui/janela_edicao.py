@@ -10,12 +10,16 @@ import logging
 import threading
 from datetime import datetime
 
+from config.carregar_json import _carregar_moedas_config
+
 from config.tema_cripto import (
     BG_SURFACE, BG_CARD, BG_INPUT,
     BTC_ORANGE, NEON_GREEN, CYAN,
     TEXT_PRIMARY, TEXT_SECONDARY, BORDER,
     tag_cores_treeview,
 )
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +48,6 @@ def _garantir_estilo():
 
 class JanelaEdicao(ttk.Frame):
 
-    # Todos os campos são somente-leitura; apenas 'Data' e 'Taxa_BRL' são editáveis.
     _CAMPOS_EDITAVEIS = {"Data", "Taxa_BRL"}
 
     def __init__(
@@ -80,6 +83,25 @@ class JanelaEdicao(ttk.Frame):
     def _build_header(self) -> None:
         header_frame = tk.Frame(self, bg=BG_SURFACE)
         header_frame.pack(fill="x", padx=10, pady=(0, 5))
+
+        tk.Label(
+            header_frame, text="Filtrar moeda:",
+            bg=BG_SURFACE, fg=TEXT_SECONDARY,
+            font=("Segoe UI", 9)
+        ).pack(side=tk.LEFT, padx=(0, 4))
+
+        self._filtro_moeda = tk.StringVar(value="Todas")
+        moedas = _carregar_moedas_config()
+
+        cb = ttk.Combobox(
+            header_frame,
+            textvariable=self._filtro_moeda,
+            values=moedas,
+            state="readonly",
+            width=10,
+        )
+        cb.pack(side=tk.LEFT, padx=(0, 16))
+        cb.bind("<<ComboboxSelected>>", lambda _: self.atualizar())
 
         self.lbl_status = tk.Label(
             header_frame, text="",
@@ -209,7 +231,6 @@ class JanelaEdicao(ttk.Frame):
         self.btn_delete.pack(side=tk.LEFT, padx=6)
 
     def atualizar(self) -> None:
-        # Bloqueia refresh automático de 60s enquanto usuário tem transação carregada
         if self._indice_editando is not None:
             return
 
@@ -243,6 +264,13 @@ class JanelaEdicao(ttk.Frame):
 
     def _renderizar_tree(self, ops_com_indice: list) -> None:
         self._mapa_indices.clear()
+
+        moeda_sel = self._filtro_moeda.get()
+        if moeda_sel != "Todas":
+            ops_com_indice = [
+                (orig_idx, op) for orig_idx, op in ops_com_indice
+                if op.get("Moeda", "").upper() == moeda_sel.upper()
+            ]
 
         for visual_idx, (orig_idx, op) in enumerate(ops_com_indice):
             valores = []

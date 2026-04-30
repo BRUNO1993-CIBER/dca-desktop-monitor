@@ -31,16 +31,12 @@ from config.tema_cripto import (
     BTC_ORANGE, NEON_GREEN, CYAN,
     TEXT_SECONDARY,
 )
+from config.carregar_json import _carregar_config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def _carregar_config() -> dict:
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    caminho = os.path.join(base_dir, "config", "config.json")
-    with open(caminho, "r", encoding="utf-8") as f:
-        return json.load(f)
 
 CONFIG = _carregar_config()
 MOEDAS_SUPORTADAS = CONFIG["moedas"]
