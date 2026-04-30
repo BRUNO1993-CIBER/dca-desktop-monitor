@@ -179,7 +179,7 @@ class InicializadorSplash:
                 messagebox.showerror("Erro", f"{e}")
                 self._encerrar()
         elif time.time() - self._start_time > 20:
-            messagebox.showerror("Timeout", "Tempo limite de 20s excedido.")
+            messagebox.showerror("Timeout", "Tempo limite de 20s excedido. ERRO!")
             self._encerrar()
         else:
             self.root.after(50, self._checar_thread)
@@ -249,7 +249,7 @@ class PortfolioDCA:
         )
 
         self._status = tk.Label(
-            status_frame, text="● Iniciando...",
+            status_frame, text="",
             bg=BG_CARD, fg=NEON_GREEN,
             font=("Segoe UI", 9), padx=10,
         )
@@ -280,10 +280,11 @@ class PortfolioDCA:
         if not self._countdown_ativo:
             return
         if self._countdown > 0:
-            self._atualizar_status(f"● Próxima atualização em {self._countdown}s", TEXT_SECONDARY)
+            self.aba_distribuicao.set_countdown(self._countdown)  
             self._countdown -= 1
             self.janela.after(1000, self._tick_countdown)
         else:
+            self.aba_distribuicao.set_countdown(0)
             if CCXT_AVAILABLE:
                 self.atualizar_todas_as_analises()
 

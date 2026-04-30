@@ -37,6 +37,9 @@ class JanelaDistribuicao(ttk.Frame):
         ttk.Button(toolbar, text="🔄 Atualizar Dashboard", command=self.atualizar, cursor="hand2").pack(side=tk.LEFT)
         ttk.Checkbutton(toolbar, text="Exibir em BRL", variable=self.brl_toggle_var, command=self.toggle_currency).pack(side=tk.LEFT, padx=15)
 
+        self.lbl_countdown = ttk.Label(toolbar, text="", font=("Segoe UI", 9), foreground=TEXT_SECONDARY)
+        self.lbl_countdown.pack(side=tk.RIGHT, padx=(0, 8))
+
         self.lbl_ultima_atualizacao = ttk.Label(toolbar, text="", font=("Segoe UI", 9), foreground=TEXT_SECONDARY)
         self.lbl_ultima_atualizacao.pack(side=tk.RIGHT)
 
@@ -275,3 +278,7 @@ class JanelaDistribuicao(ttk.Frame):
             self._canvas.create_text(33, leg_y + 5, text=f"{moeda} {d['percentual']:.1f}%", font=("Segoe UI", 9, "bold"), fill=TEXT_PRIMARY, anchor="w")
             leg_y += 18
             if leg_y > h - 25: break
+
+
+    def set_countdown(self, segundos: int) -> None:
+        self.lbl_countdown.config(text=f"| próxima atualização em {segundos}s" if segundos > 0 else "")
