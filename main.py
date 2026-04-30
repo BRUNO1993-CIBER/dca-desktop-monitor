@@ -201,9 +201,14 @@ class InicializadorSplash:
             self._encerrar()
 
     def _encerrar(self):
-        self.root.destroy()
-        self.root.quit()
-
+            try:
+                if self.progresso.winfo_exists():
+                    self.progresso.stop()
+            except Exception:
+                pass
+                
+            self.root.destroy()
+            self.root.quit()
 
 class PortfolioDCA:
     def __init__(self, data_manager, price_manager):

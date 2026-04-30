@@ -2,17 +2,13 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Optional, Callable
 from datetime import datetime
-import logging
 import threading
 
 from config.donut_chart import DonutChart
-
 from config.tema_cripto import (
     BG_DEEP, BG_CARD, BG_INPUT, BTC_ORANGE, NEON_GREEN, NEON_RED, CYAN, YELLOW,
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, BORDER, tag_cores_treeview,
 )
-
-logger = logging.getLogger(__name__)
 
 _CORES_ATIVOS = ["#f7931a", "#58a6ff", "#00ff88", "#e3b341", "#a371f7", "#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ff9ff3"]
 _DIVERSIFICACAO = [(7, "🟢 Excelente", NEON_GREEN), (4, "🟡 Moderada", YELLOW), (2, "🟠 Baixa", BTC_ORANGE), (0, "🔴 Mínima", NEON_RED)]
@@ -33,7 +29,6 @@ class JanelaDistribuicao(ttk.Frame):
     def _build_ui(self):
         self.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # --- Barra de Ferramentas ---
         toolbar = ttk.Frame(self)
         toolbar.pack(fill="x", pady=(10, 10))
 
@@ -46,7 +41,6 @@ class JanelaDistribuicao(ttk.Frame):
         self.lbl_ultima_atualizacao = ttk.Label(toolbar, text="", font=("Segoe UI", 9), foreground=TEXT_SECONDARY)
         self.lbl_ultima_atualizacao.pack(side=tk.RIGHT)
 
-        # --- Cards de Resumo ---
         cards_frame = ttk.Frame(self)
         cards_frame.pack(fill="x", pady=(0, 10))
 
@@ -55,42 +49,20 @@ class JanelaDistribuicao(ttk.Frame):
         self._lbl_pl = self._criar_card(cards_frame, "📈 P/L Geral", NEON_GREEN)
         self._lbl_div = self._criar_card(cards_frame, "🎯 Diversificação", TEXT_SECONDARY)
 
-        # --- Corpo Principal (Gráficos e Tabelas) ---
         main_body = ttk.Frame(self)
         main_body.pack(fill="both", expand=True)
-        main_body.columnconfigure(0, weight=2)
-        main_body.columnconfigure(1, weight=1)
+        main_body.columnconfigure(0, weight=1)
         main_body.rowconfigure(0, weight=2)
         main_body.rowconfigure(1, weight=3)
 
-        # Gráfico Donut Isolado e Integrado
-        donut_frame = ttk.LabelFrame(main_body, text=" Gráfico de Distribuição ", padding=10)
-        donut_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=(0, 10))
+        donut_frame = ttk.LabelFrame(main_body, text=" Gráfico de Distribuição e Alocação ", padding=10)
+        donut_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
         
-        # Instanciação do nosso componente customizado
         self.donut_chart = DonutChart(donut_frame)
         self.donut_chart.pack(fill="both", expand=True)
 
-        # Tabela de Alocação
-        aloc_frame = ttk.LabelFrame(main_body, text=" Resumo de Alocação ", padding=10)
-        aloc_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0), pady=(0, 10))
-
-        cols_aloc = ("Ativo", "Alocação (%)", "Quantidade")
-        self._aloc_tree = ttk.Treeview(aloc_frame, columns=cols_aloc, show="headings", selectmode="browse")
-        widths_aloc = {"Ativo": 70, "Alocação (%)": 90, "Quantidade": 100}
-        for col in cols_aloc:
-            self._aloc_tree.heading(col, text=col)
-            self._aloc_tree.column(col, width=widths_aloc[col], anchor="center")
-
-        tag_cores_treeview(self._aloc_tree)
-        sb_aloc = ttk.Scrollbar(aloc_frame, orient="vertical", command=self._aloc_tree.yview)
-        self._aloc_tree.configure(yscrollcommand=sb_aloc.set)
-        sb_aloc.pack(side=tk.RIGHT, fill="y")
-        self._aloc_tree.pack(fill="both", expand=True)
-
-        # Tabela Detalhada
         detalhe_frame = ttk.LabelFrame(main_body, text=" Análise Detalhada de P&L ", padding=10)
-        detalhe_frame.grid(row=1, column=0, columnspan=2, sticky="nsew")
+        detalhe_frame.grid(row=1, column=0, sticky="nsew")
 
         cols_det = ("Ativo", "Posição", "Preço Médio", "Preço Mercado", "Custo Posição", "Valor Atual", "P/L N. Realizado", "P/L Realizado", "P/L Total", "Ganho %")
         self._det_tree = ttk.Treeview(detalhe_frame, columns=cols_det, show="headings", selectmode="browse")
@@ -142,11 +114,9 @@ class JanelaDistribuicao(ttk.Frame):
         return f"${val:,.4f}"
 
     def atualizar(self):
-        """Dispara a busca de dados. Nota: o delete('all') do canvas foi removido daqui para evitar flickering"""
         self.lbl_ultima_atualizacao.config(text="🔄 Calculando...", foreground=CYAN)
-        for t in (self._aloc_tree, self._det_tree):
-            for row in t.get_children():
-                t.delete(row)
+        for row in self._det_tree.get_children():
+            self._det_tree.delete(row)
                 
         threading.Thread(target=self._worker_atualizar, daemon=True).start()
 
@@ -178,7 +148,6 @@ class JanelaDistribuicao(ttk.Frame):
         self.lbl_ultima_atualizacao.config(text=f"Atualizado: {agora}", foreground=TEXT_SECONDARY)
         self._usdt_pl_brl = usdt_pl
 
-        # Atualização dos Cards
         if "totais" in portfolio:
             totais = portfolio["totais"]
             v_atual = totais["valor_atual"]
@@ -189,7 +158,6 @@ class JanelaDistribuicao(ttk.Frame):
             self._lbl_custo.config(text=self._fmt_val(i_liq))
             self._lbl_pl.config(text=self._fmt_val(pl_geral), fg=NEON_GREEN if pl_geral >= 0 else NEON_RED)
 
-        # Atualização da Tabela de Alocação e envio de dados para o DonutChart
         distribuicao = dist.get("distribuicao", {})
         if distribuicao:
             n_ativos = len(distribuicao)
@@ -197,23 +165,13 @@ class JanelaDistribuicao(ttk.Frame):
             self._lbl_div.config(text=lbl_txt, fg=cor_txt)
             
             ord_dist = sorted(distribuicao.items(), key=lambda x: x[1]["percentual"], reverse=True)
-            
-            # Gera o mapeamento de cores dinamicamente
             cor_map = {m: _CORES_ATIVOS[i % len(_CORES_ATIVOS)] for i, (m, _) in enumerate(ord_dist)}
             
-            # Preenche a Tabela TreeView
-            for idx, (moeda, d) in enumerate(ord_dist):
-                qtd_fmt = f"{d['quantidade']:.2f}" if moeda == "USDT" else f"{d['quantidade']:.6f}"
-                tag = "par" if idx % 2 == 0 else "impar"
-                self._aloc_tree.insert("", "end", values=(moeda, f"{d['percentual']:.2f}%", qtd_fmt), tags=(tag,))
-            
-            # Delega a responsabilidade de desenhar para o componente customizado
             self.donut_chart.atualizar_dados(ord_dist, cor_map)
         else:
             self._lbl_div.config(text="--", fg=TEXT_SECONDARY)
             self.donut_chart.limpar()
 
-        # Atualização da Tabela Detalhada
         moedas_dados = {m: d for m, d in portfolio.items() if m != "totais"}
         ord_port = sorted(moedas_dados.items(), key=lambda item: item[1].get("valor_atual_posicao", 0), reverse=True)
 
