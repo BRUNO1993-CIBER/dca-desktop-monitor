@@ -6,7 +6,7 @@ import logging
 import math
 import threading
 
-from tema_cripto import (
+from config.tema_cripto import (
     BG_DEEP, BG_CARD, BG_INPUT, BTC_ORANGE, NEON_GREEN, NEON_RED, CYAN, YELLOW,
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, BORDER, tag_cores_treeview,
 )

@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox
 from datetime import datetime
 import threading
 
-from tema_cripto import (
+from config.tema_cripto import (
     BG_CARD, BG_INPUT, BTC_ORANGE, NEON_GREEN, NEON_RED, CYAN,
     TEXT_PRIMARY, TEXT_SECONDARY, BORDER, tag_cores_treeview
 )

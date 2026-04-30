@@ -20,12 +20,12 @@ if platform.system() == "Windows":
     except Exception:
         pass
 
-from backend import DataManager, PriceManager, AnalysisEngine, CCXT_AVAILABLE
-from janela_edicao import JanelaEdicao
-from janela_distribuicao import JanelaDistribuicao
-from janela_registro import JanelaRegistro
-from janela_caixa import JanelaCaixa
-from tema_cripto import (
+from backend.backend import DataManager, PriceManager, AnalysisEngine, CCXT_AVAILABLE
+from gui.janela_edicao import JanelaEdicao
+from gui.janela_distribuicao import JanelaDistribuicao
+from gui.janela_registro import JanelaRegistro
+from gui.janela_caixa import JanelaCaixa
+from config.tema_cripto import (
     aplicar_tema,
     BG_DEEP, BG_CARD, BG_INPUT,
     BTC_ORANGE, NEON_GREEN, CYAN,

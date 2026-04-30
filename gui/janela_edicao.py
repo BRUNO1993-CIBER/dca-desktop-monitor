@@ -10,7 +10,7 @@ import logging
 import threading
 from datetime import datetime
 
-from tema_cripto import (
+from config.tema_cripto import (
     BG_SURFACE, BG_CARD, BG_INPUT,
     BTC_ORANGE, NEON_GREEN, CYAN,
     TEXT_PRIMARY, TEXT_SECONDARY, BORDER,
