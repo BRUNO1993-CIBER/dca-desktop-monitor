@@ -263,9 +263,21 @@ class JanelaDistribuicao(ttk.Frame):
         for moeda, d in self._donut_dados:
             grau, cor = (d["percentual"] / 100) * 360, self._cor_map.get(moeda, TEXT_MUTED)
             self._canvas.create_arc(cx - raio, cy - raio, cx + raio, cy + raio, start=inicio, extent=grau, fill=cor, outline=BG_CARD, width=2)
+
             if d["percentual"] >= 3.0:
-                ang_rad, raio_txt = math.radians(inicio + grau / 2), furo + (raio - furo) / 2
-                self._canvas.create_text(cx + raio_txt * math.cos(ang_rad), cy - raio_txt * math.sin(ang_rad), text=moeda, font=("Segoe UI", 9, "bold"), fill=BG_DEEP)
+                ang_rad = math.radians(inicio + grau / 2)
+                raio_txt = furo + (raio - furo) / 2
+                tx = cx + raio_txt * math.cos(ang_rad)
+                ty = cy - raio_txt * math.sin(ang_rad)
+
+                angulo_texto = math.degrees(math.atan2(-(ty - cy), tx - cx))
+                if angulo_texto < -90:
+                    angulo_texto += 180
+                elif angulo_texto > 90:
+                    angulo_texto -= 180
+
+                self._canvas.create_text(tx, ty, text=moeda, font=("Segoe UI", 9, "bold"), fill=BG_DEEP, angle=angulo_texto)
+
             inicio += grau
 
         self._canvas.create_oval(cx - furo, cy - furo, cx + furo, cy + furo, fill=BG_CARD, outline=BG_CARD)
@@ -278,7 +290,6 @@ class JanelaDistribuicao(ttk.Frame):
             self._canvas.create_text(33, leg_y + 5, text=f"{moeda} {d['percentual']:.1f}%", font=("Segoe UI", 9, "bold"), fill=TEXT_PRIMARY, anchor="w")
             leg_y += 18
             if leg_y > h - 25: break
-
 
     def set_countdown(self, segundos: int) -> None:
         self.lbl_countdown.config(text=f"| próxima atualização em {segundos}s" if segundos > 0 else "")
