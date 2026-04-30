@@ -20,19 +20,20 @@ except ImportError:
 
 class DataManager:
     def __init__(self, arquivo_csv: str = "meu_diario_operacoes.csv"):
-        raiz_projeto = Path(__file__).parent.resolve()
-        self.arquivo_csv = raiz_projeto / arquivo_csv
+        raiz_projeto = Path(__file__).resolve().parent.parent
+        self.arquivo_csv = raiz_projeto / "db" / arquivo_csv
         self.headers = ['Data', 'Moeda', 'Operacao', 'Valor_USDT', 'Preco', 'Quantidade', 'Taxa_BRL']
 
     def criar_arquivo_se_necessario(self):
-        if not os.path.exists(self.arquivo_csv):
+        if not self.arquivo_csv.exists():
             try:
-                with open(self.arquivo_csv, 'w', newline='', encoding='utf-8') as f:
+                self.arquivo_csv.parent.mkdir(parents=True, exist_ok=True)
+
+                with self.arquivo_csv.open('w', newline='', encoding='utf-8') as f:
                     csv.writer(f).writerow(self.headers)
-                logger.info(f"Arquivo {self.arquivo_csv} criado com sucesso")
+
             except Exception as e:
-                logger.error(f"Erro ao criar arquivo: {e}")
-                raise
+                raise RuntimeError(f"Erro ao criar arquivo CSV: {e}")
 
     def carregar_operacoes(self) -> List[Dict]:
         operacoes_validas = []
