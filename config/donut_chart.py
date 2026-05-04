@@ -17,11 +17,26 @@ class DonutChart(ttk.Frame):
         self.canvas.pack(side=tk.RIGHT, fill="both", expand=True)
         
         cols = ("Ativo", "Alocação (%)", "Quantidade")
-        self.tree = ttk.Treeview(self.leg_frame, columns=cols, show="headings", selectmode="none")
+
+        style = ttk.Style()
+        style.configure("Donut.Treeview")
+        style.map("Donut.Treeview",
+            background=[('selected', '#2c5d8f')],
+            foreground=[('selected', 'white')]
+        )
+
+        self.tree = ttk.Treeview(
+            self.leg_frame,
+            columns=cols,
+            show="headings",
+            selectmode="browse",
+            style="Donut.Treeview"
+        )
+
         self.tree.heading("Ativo", text="Ativo")
         self.tree.heading("Alocação (%)", text="%")
         self.tree.heading("Quantidade", text="Quantidade")
-        
+
         self.tree.column("Ativo", width=90, anchor="w")
         self.tree.column("Alocação (%)", width=70, anchor="center")
         self.tree.column("Quantidade", width=100, anchor="center")

@@ -19,5 +19,5 @@
         "UNI"
     ],
     "exchange": "binance",
-    "intervalo_atualizacao": 60
+    "intervalo_atualizacao": 30
 }

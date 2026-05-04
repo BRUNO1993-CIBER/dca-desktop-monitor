@@ -32,8 +32,13 @@ class JanelaDistribuicao(ttk.Frame):
         toolbar = ttk.Frame(self)
         toolbar.pack(fill="x", pady=(10, 10))
 
-        ttk.Button(toolbar, text="🔄 Atualizar Dashboard", command=self.atualizar, cursor="hand2").pack(side=tk.LEFT)
-        ttk.Checkbutton(toolbar, text="Exibir em BRL", variable=self.brl_toggle_var, command=self.toggle_currency).pack(side=tk.LEFT, padx=15)
+        status_frame = tk.Frame(toolbar, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1, padx=8, pady=2)
+        status_frame.pack(side=tk.LEFT, padx=(5, 15))
+        
+        tk.Label(status_frame, text="🟢", font=("Segoe UI", 9), bg=BG_CARD, fg=NEON_GREEN).pack(side=tk.LEFT, padx=(0, 4))
+        tk.Label(status_frame, text="Live Sync", font=("Segoe UI", 9, "bold"), bg=BG_CARD, fg=TEXT_PRIMARY).pack(side=tk.LEFT)
+
+        ttk.Checkbutton(toolbar, text="Exibir em BRL", variable=self.brl_toggle_var, command=self.toggle_currency).pack(side=tk.LEFT, padx=5)
 
         self.lbl_countdown = ttk.Label(toolbar, text="", font=("Segoe UI", 9), foreground=TEXT_SECONDARY)
         self.lbl_countdown.pack(side=tk.RIGHT, padx=(0, 8))
@@ -71,11 +76,18 @@ class JanelaDistribuicao(ttk.Frame):
             self._det_tree.column(col, anchor="center", width=110)
 
         tag_cores_treeview(self._det_tree)
+
         self._det_tree.tag_configure("lucro", foreground=NEON_GREEN, background=BG_CARD, font=("Segoe UI", 10, "bold"))
         self._det_tree.tag_configure("prejuizo", foreground=NEON_RED, background=BG_CARD, font=("Segoe UI", 10, "bold"))
         self._det_tree.tag_configure("lucro_alt", foreground=NEON_GREEN, background="#12171e", font=("Segoe UI", 10, "bold"))
         self._det_tree.tag_configure("prejuizo_alt", foreground=NEON_RED, background="#12171e", font=("Segoe UI", 10, "bold"))
         self._det_tree.tag_configure("linha_total", font=("Segoe UI", 11, "bold"), background=BG_INPUT, foreground=BTC_ORANGE)
+
+        style = ttk.Style()
+        style.map("Treeview",
+            background=[('selected', '#2c5d8f')], 
+            foreground=[('selected', 'white')]    
+        )
 
         sb_det = ttk.Scrollbar(detalhe_frame, orient="vertical", command=self._det_tree.yview)
         self._det_tree.configure(yscrollcommand=sb_det.set)
@@ -114,11 +126,8 @@ class JanelaDistribuicao(ttk.Frame):
         return f"${val:,.4f}"
 
     def atualizar(self):
-        self.lbl_ultima_atualizacao.config(text="🔄 Calculando...", foreground=CYAN)
-        for row in self._det_tree.get_children():
-            self._det_tree.delete(row)
-                
-        threading.Thread(target=self._worker_atualizar, daemon=True).start()
+            self.lbl_ultima_atualizacao.config(text="🔄 Calculando...", foreground=CYAN)                    
+            threading.Thread(target=self._worker_atualizar, daemon=True).start()
 
     def _worker_atualizar(self):
         try:
@@ -136,6 +145,8 @@ class JanelaDistribuicao(ttk.Frame):
             self.after(0, lambda: messagebox.showerror("Erro", str(e)))
 
     def _ui_vazia(self):
+        for row in self._det_tree.get_children():
+            self._det_tree.delete(row)
         agora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         self.lbl_ultima_atualizacao.config(text=f"Última atualização: {agora}", foreground=TEXT_SECONDARY)
         for lbl in (self._lbl_patrimonio, self._lbl_custo, self._lbl_pl, self._lbl_div):
@@ -144,6 +155,8 @@ class JanelaDistribuicao(ttk.Frame):
         self.donut_chart.limpar()
 
     def _atualizar_ui(self, portfolio, usdt_pl, dist):
+        for row in self._det_tree.get_children():
+            self._det_tree.delete(row)
         agora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         self.lbl_ultima_atualizacao.config(text=f"Atualizado: {agora}", foreground=TEXT_SECONDARY)
         self._usdt_pl_brl = usdt_pl
