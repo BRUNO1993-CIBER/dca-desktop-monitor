@@ -103,7 +103,6 @@ class DataManager:
             logger.error(f"Erro ao salvar operação: {e}")
             return False
 
-
 class PriceManager:
     def __init__(self, exchange_name: str = 'binance'):
         self.exchange = None
@@ -165,6 +164,17 @@ class PriceManager:
     def get_preco(self, moeda: str) -> float | None:
         return self.precos_cache.get(moeda)
 
+    def validar_moeda(self, simbolo: str) -> bool:
+
+        if not CCXT_AVAILABLE or not hasattr(self, 'exchange') or not self.exchange:
+            return True 
+            
+        try:
+            par = f"{simbolo.upper()}/USDT"
+            self.exchange.fetch_ticker(par)
+            return True
+        except Exception:
+            return False
 
 class AnalysisEngine:
     @staticmethod

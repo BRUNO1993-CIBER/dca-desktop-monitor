@@ -51,7 +51,6 @@ class JanelaRegistro(ttk.Frame):
         main_container = ttk.Frame(self, padding="30 20 30 20")
         main_container.pack(fill="both", expand=True)
 
-        # Cabeçalho
         header_frame = ttk.Frame(main_container)
         header_frame.pack(fill="x", pady=(0, 20))
         ttk.Label(
@@ -81,7 +80,6 @@ class JanelaRegistro(ttk.Frame):
             container = ttk.Frame(parent)
             container.pack(anchor="n", pady=20)
 
-            # 1. Moeda
             ttk.Label(container, text="Moeda:", style="Padrao.TLabel").grid(
                 row=0, column=0, sticky="e", pady=10, padx=(0, 15))
             
@@ -93,7 +91,6 @@ class JanelaRegistro(ttk.Frame):
             self._label_preco_atual = ttk.Label(container, text="", style="Destaque.TLabel")
             self._label_preco_atual.grid(row=0, column=2, sticky="w", padx=(15, 0))
 
-            # 2. Operação
             ttk.Label(container, text="Operação:", style="Padrao.TLabel").grid(
                 row=1, column=0, sticky="e", pady=10, padx=(0, 15))
                 
@@ -103,7 +100,6 @@ class JanelaRegistro(ttk.Frame):
             self._combo_tipo.set("Compra")
             self._combo_tipo.bind("<<ComboboxSelected>>", self._ao_mudar_selecao)
 
-            # 3. Valor USDT
             ttk.Label(container, text="Valor (USDT):", style="Padrao.TLabel").grid(
                 row=2, column=0, sticky="e", pady=10, padx=(0, 15))
                 
@@ -114,7 +110,6 @@ class JanelaRegistro(ttk.Frame):
             self._label_quantidade = ttk.Label(container, text="", style="Info.TLabel")
             self._label_quantidade.grid(row=2, column=2, sticky="w", padx=(15, 0))
 
-            # 4. Preço Unitário
             ttk.Label(container, text="Preço Unitário:", style="Padrao.TLabel").grid(
                 row=3, column=0, sticky="e", pady=10, padx=(0, 15))
                 
@@ -140,7 +135,7 @@ class JanelaRegistro(ttk.Frame):
                 command=self._vender_tudo, style="Acao.TButton", cursor="hand2")
             self._btn_vender_tudo.grid(row=0, column=1, sticky="w", padx=(15, 0))
 
-            self._frame_venda.grid_remove() # Oculta inicialmente
+            self._frame_venda.grid_remove()
 
     def _ao_mudar_selecao(self, event=None) -> None:
         self._ao_selecionar_moeda()
@@ -361,3 +356,15 @@ class JanelaRegistro(ttk.Frame):
         self._label_quantidade.config(text="")
         self._label_preco_atual.config(text="")
         self._frame_venda.grid_remove() 
+
+
+    def atualizar_lista_moedas(self, novas_moedas: list) -> None:
+            """Atualiza o Combobox com a nova lista de moedas em tempo real."""
+            self._moedas = novas_moedas
+            self._combo_moeda.config(values=self._moedas)
+            
+            moeda_atual = self._combo_moeda.get()
+            if moeda_atual and moeda_atual not in self._moedas:
+                self._combo_moeda.set('')
+                self._label_preco_atual.config(text="")
+                self._label_quantidade.config(text="")

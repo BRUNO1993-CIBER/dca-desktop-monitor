@@ -1,5 +1,6 @@
 # gui/janela_moedas.py — Gerenciamento de Moedas | Add, remover, reordenar e salvar em config.json.
 
+import threading
 import json
 import logging
 import tkinter as tk
@@ -25,9 +26,11 @@ BORDER_SUBTLE = "#2a2d3e"
 class JanelaMoedas(tk.Frame):
 
 
-    def __init__(self, parent, on_moedas_alteradas=None):
+    def __init__(self, parent, on_moedas_alteradas=None, price_manager=None):
         super().__init__(parent, bg=BG_DEEP)
         self._on_moedas_alteradas = on_moedas_alteradas
+        self._price_manager = price_manager 
+        self._moedas: list[str] = []
         self._moedas: list[str] = []
         self._alterado = False
 
@@ -219,40 +222,42 @@ class JanelaMoedas(tk.Frame):
         tk.Frame(inner, bg=BG_CARD).pack(expand=True, fill="both")
         tk.Label(
             inner,
-            text="💡 Apenas moedas disponíveis\nna exchange configurada.",
+            text="💡 Apenas moedas disponíveis na exchange configurada.\n\n⚠️ Atenção: Toda e qualquer alteração (adicionar, remover\nou reordenar moedas) só terá efeito no sistema após você\nclicar no botão 'Salvar e Aplicar' no rodapé da página.",
             font=("Segoe UI", 9, "italic"),
             bg=BG_CARD, fg=TEXT_SECONDARY,
             justify="left",
         ).pack(anchor="w", pady=(16, 0))
 
     def _construir_rodape(self):
-        rodape = tk.Frame(self, bg=BG_DEEP, pady=12)
-        rodape.pack(fill="x", padx=24)
+            rodape = tk.Frame(self, bg=BG_DEEP, pady=16)
+            rodape.pack(fill="x", padx=24)
 
-        self._btn_salvar = tk.Button(
-            rodape,
-            text="💾  Salvar e Aplicar",
-            font=("Segoe UI", 11, "bold"),
-            bg=BTC_ORANGE, fg="#000",
-            activebackground=NEON_GREEN, activeforeground="#000",
-            relief="flat", bd=0, cursor="hand2",
-            padx=24, pady=10,
-            command=self._salvar_e_aplicar,
-            state="disabled",
-        )
-        self._btn_salvar.pack(side="right")
+            container_botoes = tk.Frame(rodape, bg=BG_DEEP)
+            container_botoes.pack(expand=True)  
 
-        tk.Button(
-            rodape,
-            text="↺  Descartar alterações",
-            font=("Segoe UI", 10),
-            bg=BG_CARD, fg=TEXT_SECONDARY,
-            activebackground=YELLOW_WARN, activeforeground="#000",
-            relief="flat", bd=0, cursor="hand2",
-            padx=16, pady=10,
-            command=self._descartar,
-        ).pack(side="right", padx=(0, 8))
+            tk.Button(
+                container_botoes,
+                text="↺  Descartar alterações",
+                font=("Segoe UI", 10),
+                bg=BG_CARD, fg=TEXT_SECONDARY,
+                activebackground=YELLOW_WARN, activeforeground="#000",
+                relief="flat", bd=0, cursor="hand2",
+                padx=16, pady=10,
+                command=self._descartar,
+            ).pack(side="left", padx=10)
 
+            self._btn_salvar = tk.Button(
+                container_botoes,
+                text="💾  Salvar e Aplicar",
+                font=("Segoe UI", 12, "bold"), 
+                bg=BTC_ORANGE, fg="#000",      
+                activebackground=NEON_GREEN, activeforeground="#000",
+                relief="flat", bd=0, cursor="hand2",
+                padx=40, pady=10,        
+                command=self._salvar_e_aplicar,
+                state="disabled",
+            )
+            self._btn_salvar.pack(side="left", padx=10)
 
     def _carregar_moedas(self):
         try:
@@ -300,12 +305,32 @@ class JanelaMoedas(tk.Frame):
         self._carregar_moedas()
 
     def _adicionar_moeda(self):
-        simbolo = self._entry_nova.get().strip().upper()
-        if not simbolo:
-            self._set_status("Digite o símbolo da moeda.", YELLOW_WARN, autoapagar=True)
-            return
-        if simbolo in self._moedas:
-            self._set_status(f"{simbolo} já está na lista.", YELLOW_WARN, autoapagar=True)
+            simbolo = self._entry_nova.get().strip().upper()
+            if not simbolo:
+                self._set_status("Digite o símbolo da moeda.", YELLOW_WARN, autoapagar=True)
+                return
+            if simbolo in self._moedas:
+                self._set_status(f"{simbolo} já está na lista.", YELLOW_WARN, autoapagar=True)
+                return
+
+            self._set_status(f"🔍 Verificando {simbolo} na Binance...", CYAN)
+            self._entry_nova.config(state="disabled")
+
+            def worker():
+                valido = True
+                if self._price_manager:
+                    valido = self._price_manager.validar_moeda(simbolo)
+                
+                self.after(0, lambda: self._finalizar_adicao(simbolo, valido))
+
+            threading.Thread(target=worker, daemon=True).start()
+
+    def _finalizar_adicao(self, simbolo: str, valido: bool):
+        self._entry_nova.config(state="normal")
+        self._entry_nova.focus()
+
+        if not valido:
+            self._set_status(f"✕ A moeda '{simbolo}' não existe na Binance (Par {simbolo}/USDT).", RED_ALERT, autoapagar=True)
             return
 
         pos_txt = self._var_posicao.get()
@@ -330,7 +355,7 @@ class JanelaMoedas(tk.Frame):
         self._listbox.selection_set(idx)
         self._listbox.see(idx)
         self._marcar_alterado(True)
-        self._set_status(f"＋ {simbolo} adicionado.", NEON_GREEN, autoapagar=True)
+        self._set_status(f"✓ {simbolo} adicionado com sucesso.", NEON_GREEN, autoapagar=True)
 
     def _remover_moeda(self):
         sel = self._listbox.curselection()

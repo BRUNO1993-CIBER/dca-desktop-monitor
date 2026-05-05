@@ -25,6 +25,7 @@ from gui.janela_edicao import JanelaEdicao
 from gui.janela_distribuicao import JanelaDistribuicao
 from gui.janela_registro import JanelaRegistro
 from gui.janela_caixa import JanelaCaixa
+from gui.janela_moedas import JanelaMoedas
 from config.tema_cripto import (
     aplicar_tema,
     BG_DEEP, BG_CARD, BG_INPUT,
@@ -245,10 +246,17 @@ class PortfolioDCA:
         self.aba_registro     = JanelaRegistro(self.notebook, self.data_manager, self.price_manager, AnalysisEngine, MOEDAS_SUPORTADAS, self.atualizar_todas_as_analises)
         self.aba_edicao       = JanelaEdicao(self.notebook, self.data_manager, self.price_manager, AnalysisEngine, self.atualizar_todas_as_analises)
 
+        self.aba_moedas = JanelaMoedas(
+            self.notebook, 
+            on_moedas_alteradas=self._ao_alterar_moedas, 
+            price_manager=self.price_manager
+        )
+
         self.notebook.add(self.aba_distribuicao, text="📈  Dashboard Geral")
         self.notebook.add(self.aba_caixa,        text="💰  Caixa (USDT)")
         self.notebook.add(self.aba_registro,     text="✏️  Registrar Operação")
         self.notebook.add(self.aba_edicao,       text="⚙️  Histórico e Edição")
+        self.notebook.add(self.aba_moedas,       text="🪙  Gerenciar Moedas")
 
         status_frame = tk.Frame(self.janela, bg=BG_CARD, pady=4)
         status_frame.pack(side=tk.BOTTOM, fill=tk.X)
@@ -325,6 +333,17 @@ class PortfolioDCA:
         finally:
             self._reiniciar_countdown()
 
+    def _ao_alterar_moedas(self, novas_moedas: list) -> None:
+
+            global MOEDAS_SUPORTADAS
+            MOEDAS_SUPORTADAS = novas_moedas
+
+            self.aba_registro.atualizar_lista_moedas(novas_moedas)
+
+            self._atualizar_status("🪙 Novas moedas salvas! Buscando preços...", CYAN)
+            
+            self.atualizar_todas_as_analises()
+            
     def _atualizar_status(self, mensagem: str, cor: str = TEXT_SECONDARY) -> None:
         def _update():
             if hasattr(self, "_status"):
