@@ -1,8 +1,8 @@
 {
     "moedas": [
         "BTC",
-        "USDT",
         "ETH",
+        "USDT",
         "XRP",
         "BNB",
         "USDC",
@@ -12,11 +12,11 @@
         "ADA",
         "BCH",
         "LINK",
+        "XLM",
         "AVAX",
         "SUI",
         "NEAR",
-        "UNI",
-        "TON"
+        "UNI"
     ],
     "exchange": "binance",
     "intervalo_atualizacao": 30
