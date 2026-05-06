@@ -57,11 +57,11 @@ class JanelaDistribuicao(ttk.Frame):
         sync_frame = ttk.Frame(toolbar)
         sync_frame.pack(side=tk.RIGHT, padx=(0, 5))
 
-        # 1. Badge Live Sync
+        # 1. Badge Sincronizado c/ Binance
         badge_frame = tk.Frame(sync_frame, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1, padx=8, pady=2)
         badge_frame.pack(side=tk.LEFT, padx=(0, 10))
         tk.Label(badge_frame, text="🟢", font=("Segoe UI", 9), bg=BG_CARD, fg=NEON_GREEN).pack(side=tk.LEFT, padx=(0, 4))
-        tk.Label(badge_frame, text="Live Sync", font=("Segoe UI", 9, "bold"), bg=BG_CARD, fg=TEXT_PRIMARY).pack(side=tk.LEFT)
+        tk.Label(badge_frame, text="Sincronizado c/ Binance", font=("Segoe UI", 9, "bold"), bg=BG_CARD, fg=TEXT_PRIMARY).pack(side=tk.LEFT)
         
         # 2. Label de Feedback Efêmero (Calculando / Concluído / Erro)
         self.lbl_status = ttk.Label(sync_frame, text="", font=("Segoe UI", 9), foreground=CYAN)
