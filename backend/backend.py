@@ -359,42 +359,60 @@ class AnalysisEngine:
         quantidade_usdt = Decimal('0')
         lucro_realizado = Decimal('0')
         pmc_brl         = Decimal('0')
-        ops_com_taxa    = 0
 
         for op in sorted(operacoes, key=lambda x: x['Data']):
-            taxa_brl = Decimal(str(op.get('Taxa_BRL') or 0))
             tipo     = op['Operacao']
             moeda    = op['Moeda']
             valor    = Decimal(str(op['Valor_USDT']))
-
-            if taxa_brl <= Decimal('1.1'):
-                continue  
-
-            ops_com_taxa += 1
+            taxa_brl = Decimal(str(op.get('Taxa_BRL') or 0))
 
             if moeda == 'USDT':
                 qtd = Decimal(str(op['Quantidade']))
+                
                 if tipo == 'compra':
-                    custo_brl       += qtd * taxa_brl
+                    taxa_deposito = taxa_brl if taxa_brl > 0 else Decimal(str(preco_brl_atual))
+                    
+                    custo_brl       += qtd * taxa_deposito
                     quantidade_usdt += qtd
                     pmc_brl = custo_brl / quantidade_usdt if quantidade_usdt > 0 else Decimal('0')
-                elif tipo == 'venda' and quantidade_usdt > 0 and pmc_brl > 0:
-                    custo_venda      = qtd * pmc_brl
-                    lucro_realizado += (qtd * taxa_brl) - custo_venda
+                    
+                elif tipo == 'venda' and quantidade_usdt > 0:
+                    qtd_saque = min(qtd, quantidade_usdt)
+                    
+                    custo_venda = qtd_saque * pmc_brl
+                    taxa_saque = taxa_brl if taxa_brl > 0 else pmc_brl
+                    
+                    lucro_realizado += (qtd_saque * taxa_saque) - custo_venda
                     custo_brl       -= custo_venda
-                    quantidade_usdt -= qtd
+                    quantidade_usdt -= qtd_saque
+
             else:
-                if tipo == 'venda':
-                    custo_brl       += valor * taxa_brl
+                if tipo == 'compra' and quantidade_usdt > 0:
+                    qtd_gasta = min(valor, quantidade_usdt)
+                    custo_venda = qtd_gasta * pmc_brl
+                    
+                    custo_brl       -= custo_venda
+                    quantidade_usdt -= qtd_gasta
+
+                elif tipo == 'venda':
+                    if taxa_brl > 0:
+                        taxa_entrada = taxa_brl                    
+                    elif pmc_brl > 0:
+                        taxa_entrada = pmc_brl                    
+                    else:
+                        taxa_entrada = Decimal(str(preco_brl_atual)) 
+                    
+                    custo_brl       += valor * taxa_entrada
                     quantidade_usdt += valor
                     pmc_brl = custo_brl / quantidade_usdt if quantidade_usdt > 0 else Decimal('0')
-                elif tipo == 'compra' and quantidade_usdt > 0 and pmc_brl > 0:
-                    custo_venda      = valor * pmc_brl
-                    lucro_realizado += (valor * taxa_brl) - custo_venda
-                    custo_brl       -= custo_venda
-                    quantidade_usdt -= valor
 
-        if ops_com_taxa == 0 or quantidade_usdt <= Decimal('1e-9'):
+
+            if quantidade_usdt < Decimal('1e-8'):
+                quantidade_usdt = Decimal('0')
+                custo_brl       = Decimal('0')
+                pmc_brl         = Decimal('0')
+
+        if quantidade_usdt <= Decimal('0'):
             return None
 
         qtd_final   = float(quantidade_usdt)
