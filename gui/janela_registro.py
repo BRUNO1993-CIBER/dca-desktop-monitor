@@ -39,7 +39,6 @@ class JanelaRegistro(ttk.Frame):
         style.configure("Saldo.TLabel", font=("Segoe UI", 10, "bold"), foreground="#2e7d32")
         style.configure("AlertaInfo.TLabel", font=("Segoe UI", 10, "bold"), foreground="#cc0000")
         style.configure("Dica.TLabel", font=("Segoe UI", 9, "italic"), foreground="#0052cc")
-        style.configure("Max.TButton", font=("Segoe UI", 9, "bold"), foreground="#cc0000")
         style.configure("Accent.TButton", font=("Segoe UI", 12, "bold"))
         style.configure("Acao.TButton", font=("Segoe UI", 10))
 
@@ -77,7 +76,7 @@ class JanelaRegistro(ttk.Frame):
         self._label_preco_atual.grid(row=0, column=2, sticky="w", padx=(15, 0))
 
         ttk.Label(container, text="Operação:", style="Padrao.TLabel").grid(row=1, column=0, sticky="e", pady=10, padx=(0, 15))
-        self._combo_tipo = ttk.Combobox(container, values=["Compra", "Venda"], font=("Segoe UI", 11), state="readonly", width=22)
+        self._combo_tipo = ttk.Combobox(container, values=["Compra", "Venda", "Venda Total (MAX)"], font=("Segoe UI", 11), state="readonly", width=22)
         self._combo_tipo.grid(row=1, column=1, sticky="w", pady=10)
         self._combo_tipo.set("Compra")
         self._combo_tipo.bind("<<ComboboxSelected>>", self._ao_mudar_selecao)
@@ -96,17 +95,9 @@ class JanelaRegistro(ttk.Frame):
 
         ttk.Label(container, text="Valor (USDT):", style="Padrao.TLabel").grid(row=3, column=0, sticky="e", pady=10, padx=(0, 15))
         
-        frame_valor = ttk.Frame(container)
-        frame_valor.grid(row=3, column=1, sticky="w", pady=10)
-        
-        self._entry_valor = ttk.Entry(frame_valor, font=("Segoe UI", 11), width=16)
-        self._entry_valor.pack(side="left", padx=(0, 5))
+        self._entry_valor = ttk.Entry(container, font=("Segoe UI", 11), width=24)
+        self._entry_valor.grid(row=3, column=1, sticky="w", pady=10)
         self._entry_valor.bind("<KeyRelease>", self._calcular_quantidade)
-
-        self._btn_max = ttk.Button(
-            frame_valor, text="MAX (Vender Tudo)", command=self._vender_tudo, style="Max.TButton", cursor="hand2"
-        )
-        self._btn_max.pack_forget()
 
         self._label_quantidade = ttk.Label(container, text="", style="Info.TLabel")
         self._label_quantidade.grid(row=3, column=2, sticky="w", padx=(15, 0))
@@ -117,44 +108,41 @@ class JanelaRegistro(ttk.Frame):
     def _ao_mudar_selecao(self, event=None) -> None:
         self._qtd_max_travada = None
         self._label_ajuda.config(text="")
-        
-        tipo = self._combo_tipo.get()
-        if tipo == "Venda":
-            self._btn_max.pack(side="left")
-        else:
-            self._btn_max.pack_forget()
-
         self._ao_selecionar_moeda()
         self._atualizar_saldo_disponivel()
+        self._verificar_venda_max()
 
-    def _vender_tudo(self) -> None:
+    def _verificar_venda_max(self) -> None:
+        tipo = self._combo_tipo.get()
         moeda = self._combo_moeda.get()
-        if not moeda or moeda == "USDT":
-            messagebox.showinfo("Aviso", "Selecione uma criptomoeda válida para vender.")
-            return
-            
-        try:
-            operacoes = self._data_manager.carregar_operacoes()
-            portfolio = self._engine.calcular_portfolio(operacoes, self._price_manager.precos_cache)
-            saldo_exato = Decimal(str(portfolio.get(moeda, {}).get("quantidade_final", 0)))
 
-            if saldo_exato <= 0:
-                messagebox.showwarning("Aviso", f"Você não possui saldo de {moeda} para vender.")
-                return
+        if tipo == "Venda Total (MAX)" and moeda and moeda != "USDT":
+            try:
+                operacoes = self._data_manager.carregar_operacoes()
+                portfolio = self._engine.calcular_portfolio(operacoes, self._price_manager.precos_cache)
+                saldo_exato = Decimal(str(portfolio.get(moeda, {}).get("quantidade_final", 0)))
 
-            self._qtd_max_travada = saldo_exato
+                if saldo_exato <= 0:
+                    messagebox.showwarning("Aviso", f"Você não possui saldo de {moeda} para vender.")
+                    self._combo_tipo.set("Venda")
+                    self._calcular_quantidade()
+                    return
 
-            preco_str = self._entry_preco.get()
-            if preco_str:
-                preco = Decimal(preco_str)
-                valor_usdt_sugestao = saldo_exato * preco
-                self._entry_valor.delete(0, tk.END)
-                self._entry_valor.insert(0, f"{valor_usdt_sugestao:.4f}")
+                self._qtd_max_travada = saldo_exato
 
+                preco_str = self._entry_preco.get()
+                if preco_str:
+                    preco = Decimal(preco_str)
+                    valor_usdt_sugestao = saldo_exato * preco
+                    self._entry_valor.delete(0, tk.END)
+                    self._entry_valor.insert(0, f"{valor_usdt_sugestao:.4f}")
+
+                self._calcular_quantidade()
+
+            except Exception as e:
+                logger.error(f"Erro ao processar venda total: {e}")
+        else:
             self._calcular_quantidade()
-
-        except Exception as e:
-            logger.error(f"Erro ao calcular venda total: {e}")
 
     def _ao_selecionar_moeda(self, event=None) -> None:
         moeda = self._combo_moeda.get()
@@ -172,8 +160,8 @@ class JanelaRegistro(ttk.Frame):
             self._entry_preco.config(state="normal")
             self._entry_preco.delete(0, tk.END)
             self._entry_preco.insert(0, taxa)
-            self._btn_max.pack_forget()
-            self._calcular_quantidade()
+            if self._combo_tipo.get() == "Venda Total (MAX)":
+                self._combo_tipo.set("Venda")
             return
 
         self._entry_preco.config(state="normal")
@@ -182,7 +170,6 @@ class JanelaRegistro(ttk.Frame):
             self._label_preco_atual.config(text=f"Atual: ${preco:.4f}")
             self._entry_preco.delete(0, tk.END)
             self._entry_preco.insert(0, f"{preco:.6f}")
-            self._calcular_quantidade()
         else:
             self._label_preco_atual.config(text="Preço indisponível")
 
@@ -190,13 +177,13 @@ class JanelaRegistro(ttk.Frame):
         moeda = self._combo_moeda.get()
         operacao = self._combo_tipo.get()
 
-        if operacao == "Venda" and moeda and moeda != "USDT":
+        if operacao in ["Venda", "Venda Total (MAX)"] and moeda and moeda != "USDT":
             try:
                 operacoes = self._data_manager.carregar_operacoes()
                 portfolio = self._engine.calcular_portfolio(operacoes, self._price_manager.precos_cache)
                 saldo = portfolio.get(moeda, {}).get("quantidade_final", 0)
                 self._label_saldo.config(text=f"Saldo: {saldo:.8f} {moeda}")
-            except Exception as e:
+            except Exception:
                 self._label_saldo.config(text="")
         else:
             self._label_saldo.config(text="")
@@ -207,7 +194,7 @@ class JanelaRegistro(ttk.Frame):
             valor_str = self._entry_valor.get()
             preco_str = self._entry_preco.get()
 
-            if self._qtd_max_travada is not None and self._combo_tipo.get() == "Venda":
+            if self._combo_tipo.get() == "Venda Total (MAX)" and self._qtd_max_travada is not None:
                 self._label_quantidade.config(
                     text=f"🔒 TRAVADO: Será zerado exatas {self._qtd_max_travada:.8f} {moeda}.",
                     style="AlertaInfo.TLabel"
@@ -248,7 +235,7 @@ class JanelaRegistro(ttk.Frame):
         if preco:
             self._entry_preco.delete(0, tk.END)
             self._entry_preco.insert(0, f"{preco:.6f}")
-            self._calcular_quantidade()
+            self._verificar_venda_max()
         else:
             messagebox.showwarning("Aviso", "Preço não disponível.")
 
@@ -278,7 +265,10 @@ class JanelaRegistro(ttk.Frame):
 
         try:
             moeda = self._combo_moeda.get().strip().upper()
-            tipo  = self._combo_tipo.get().strip().lower()
+            tipo_selecionado = self._combo_tipo.get().strip()
+            
+            tipo_csv = "venda" if "Venda" in tipo_selecionado else "compra"
+
             valor = Decimal(self._entry_valor.get())
             preco = Decimal(self._entry_preco.get())
 
@@ -286,12 +276,12 @@ class JanelaRegistro(ttk.Frame):
 
             if moeda == "USDT":
                 quantidade = valor
-            elif tipo == "venda" and self._qtd_max_travada is not None:
+            elif tipo_selecionado == "Venda Total (MAX)" and self._qtd_max_travada is not None:
                 quantidade = self._qtd_max_travada
             else:
                 quantidade = valor / preco
 
-            if tipo == "compra" and moeda != "USDT":
+            if tipo_csv == "compra" and moeda != "USDT":
                 operacoes = self._data_manager.carregar_operacoes()
                 validacao = self._engine.validar_saldo_suficiente(operacoes, float(valor))
 
@@ -305,16 +295,16 @@ class JanelaRegistro(ttk.Frame):
                         return
 
             data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            operacao  = [data_hora, moeda, tipo, float(valor), float(preco), float(quantidade), taxa_brl]
+            operacao  = [data_hora, moeda, tipo_csv, float(valor), float(preco), float(quantidade), taxa_brl]
 
             if not self._data_manager.salvar_operacao(operacao):
                 messagebox.showerror("Erro", "Não foi possível salvar a operação.")
                 return
 
-            if tipo == 'venda' and self._qtd_max_travada is not None:
+            if tipo_selecionado == "Venda Total (MAX)":
                 msg = f"Venda Total executada! Saldo zerado com sucesso."
             else:
-                msg = f"{tipo.title()} registrada com sucesso!"
+                msg = f"{tipo_csv.title()} registrada com sucesso!"
 
             messagebox.showinfo("Sucesso", msg)
             self._limpar()
@@ -328,7 +318,6 @@ class JanelaRegistro(ttk.Frame):
         self._qtd_max_travada = None
         self._combo_moeda.set("")
         self._combo_tipo.set("Compra")
-        self._btn_max.pack_forget()
         self._entry_valor.delete(0, tk.END)
         self._entry_preco.config(state="normal")
         self._entry_preco.delete(0, tk.END)
