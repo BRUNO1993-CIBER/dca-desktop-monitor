@@ -265,13 +265,6 @@ class PortfolioDCA:
             side=tk.BOTTOM, fill=tk.X, before=status_frame
         )
 
-        self._status = tk.Label(
-            status_frame, text="",
-            bg=BG_CARD, fg=NEON_GREEN,
-            font=("Segoe UI", 9), padx=10,
-        )
-        self._status.pack(side=tk.LEFT)
-
         tk.Label(
             status_frame, text="Dev by Bruno Machado",
             bg=BG_CARD, fg=TEXT_SECONDARY,
@@ -346,10 +339,7 @@ class PortfolioDCA:
             
     def _atualizar_status(self, mensagem: str, cor: str = TEXT_SECONDARY) -> None:
         def _update():
-            if hasattr(self, "_status"):
-                self._status.config(text=mensagem, fg=cor)
-                self.janela.update_idletasks()
-
+            self.aba_distribuicao.set_status(mensagem, cor)
         if threading.current_thread() is threading.main_thread():
             _update()
         else:
