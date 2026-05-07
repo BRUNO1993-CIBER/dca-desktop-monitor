@@ -9,11 +9,10 @@ import logging
 getcontext().prec = 18
 logger = logging.getLogger(__name__)
 
-
 class TipoOperacao(Enum):
     COMPRA      = "compra"
     VENDA       = "venda"
-    VENDA_TOTAL = "venda"
+    VENDA_TOTAL = "venda_total" 
 
     @property
     def label(self) -> str:
@@ -21,6 +20,14 @@ class TipoOperacao(Enum):
             "COMPRA":      "Compra",
             "VENDA":       "Venda",
             "VENDA_TOTAL": "Venda Total (MAX)",
+        }[self.name]
+
+    @property
+    def csv_value(self) -> str:
+        return {
+            "COMPRA":      "compra",
+            "VENDA":       "venda",
+            "VENDA_TOTAL": "venda",  
         }[self.name]
 
     @classmethod
@@ -37,7 +44,6 @@ class TipoOperacao(Enum):
     @classmethod
     def labels_usdt(cls) -> list:
         return [cls.COMPRA.label, cls.VENDA.label]
-
 
 class JanelaRegistro(ttk.Frame):
 
@@ -321,7 +327,7 @@ class JanelaRegistro(ttk.Frame):
         try:
             moeda    = self._combo_moeda.get().strip().upper()
             tipo     = TipoOperacao.from_label(self._combo_tipo.get())
-            tipo_csv = tipo.value
+            tipo_csv = tipo.csv_value
             valor    = Decimal(self._entry_valor.get())
             preco    = Decimal(self._entry_preco.get())
             taxa_brl = self._price_manager.preco_brl or 0.0
