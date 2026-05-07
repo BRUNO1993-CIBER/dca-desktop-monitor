@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class TipoOperacao(Enum):
     COMPRA      = "compra"
     VENDA       = "venda"
-    VENDA_TOTAL = "venda_total" 
+    VENDA_TOTAL = "venda_total"
 
     @property
     def label(self) -> str:
@@ -27,7 +27,7 @@ class TipoOperacao(Enum):
         return {
             "COMPRA":      "compra",
             "VENDA":       "venda",
-            "VENDA_TOTAL": "venda",  
+            "VENDA_TOTAL": "venda",
         }[self.name]
 
     @classmethod
@@ -44,6 +44,7 @@ class TipoOperacao(Enum):
     @classmethod
     def labels_usdt(cls) -> list:
         return [cls.COMPRA.label, cls.VENDA.label]
+
 
 class JanelaRegistro(ttk.Frame):
 
@@ -71,13 +72,13 @@ class JanelaRegistro(ttk.Frame):
         style = ttk.Style()
         style.configure("Titulo.TLabel",   font=("Segoe UI", 16, "bold"))
         style.configure("Padrao.TLabel",   font=("Segoe UI", 11))
-        style.configure("Info.TLabel",     font=("Segoe UI", 10),            foreground="#666666")
-        style.configure("Destaque.TLabel", font=("Segoe UI", 10, "bold"),    foreground="#0052cc")
-        style.configure("Saldo.TLabel",    font=("Segoe UI", 10, "bold"),    foreground="#2e7d32")
-        style.configure("Travado.TLabel",  font=("Segoe UI", 10, "bold"),    foreground="#cc0000")
-        style.configure("Dica.TLabel",     font=("Segoe UI", 9, "italic"),   foreground="#0052cc")
+        style.configure("Info.TLabel",     font=("Segoe UI", 10),          foreground="#666666")
+        style.configure("Destaque.TLabel", font=("Segoe UI", 10, "bold"),  foreground="#0052cc")
+        style.configure("Saldo.TLabel",    font=("Segoe UI", 10, "bold"),  foreground="#2e7d32")
+        style.configure("Travado.TLabel",  font=("Segoe UI", 10, "bold"),  foreground="#cc0000")
+        style.configure("Dica.TLabel",     font=("Segoe UI", 9, "italic"), foreground="#0052cc")
+        style.configure("Erro.TLabel",     font=("Segoe UI", 9, "bold"),   foreground="#cc0000")
         style.configure("Accent.TButton",  font=("Segoe UI", 12, "bold"))
-        style.configure("Acao.TButton",    font=("Segoe UI", 10))
 
     def atualizar(self) -> None:
         self._atualizar_saldo_disponivel()
@@ -96,13 +97,15 @@ class JanelaRegistro(ttk.Frame):
 
         btn_frame = ttk.Frame(main)
         btn_frame.pack(fill="x", pady=(30, 10))
-        ttk.Button(
+        self._btn_salvar = ttk.Button(
             btn_frame,
             text="💾 Salvar Operação",
             command=self._salvar,
             style="Accent.TButton",
             cursor="hand2",
-        ).pack(ipady=5, ipadx=20)
+            state="disabled",
+        )
+        self._btn_salvar.pack(ipady=5, ipadx=20)
 
     def _build_form(self, parent: ttk.Frame) -> None:
         container = ttk.Frame(parent)
@@ -113,7 +116,7 @@ class JanelaRegistro(ttk.Frame):
         self._combo_moeda = ttk.Combobox(
             container, values=self._moedas, font=("Segoe UI", 11), state="readonly", width=22)
         self._combo_moeda.grid(row=0, column=1, sticky="w", pady=10)
-        self._combo_moeda.bind("<<ComboboxSelected>>", self._ao_mudar_selecao)
+        self._combo_moeda.bind("<<ComboboxSelected>>", self._ao_mudar_moeda)
 
         self._label_preco_atual = ttk.Label(container, text="", style="Destaque.TLabel")
         self._label_preco_atual.grid(row=0, column=2, sticky="w", padx=(15, 0))
@@ -121,29 +124,22 @@ class JanelaRegistro(ttk.Frame):
         ttk.Label(container, text="Operação:", style="Padrao.TLabel").grid(
             row=1, column=0, sticky="e", pady=10, padx=(0, 15))
         self._combo_tipo = ttk.Combobox(
-            container, values=TipoOperacao.labels_crypto(), font=("Segoe UI", 11), state="readonly", width=22)
+            container, font=("Segoe UI", 11), state="disabled", width=22)
         self._combo_tipo.grid(row=1, column=1, sticky="w", pady=10)
-        self._combo_tipo.set(TipoOperacao.COMPRA.label)
-        self._combo_tipo.bind("<<ComboboxSelected>>", self._ao_mudar_selecao)
+        self._combo_tipo.bind("<<ComboboxSelected>>", self._ao_mudar_tipo)
 
         self._label_saldo = ttk.Label(container, text="", style="Saldo.TLabel")
         self._label_saldo.grid(row=1, column=2, sticky="w", padx=(15, 0))
 
         ttk.Label(container, text="Preço Unitário:", style="Padrao.TLabel").grid(
             row=2, column=0, sticky="e", pady=10, padx=(0, 15))
-        self._entry_preco = ttk.Entry(container, font=("Segoe UI", 11), width=24)
+        self._entry_preco = ttk.Entry(container, font=("Segoe UI", 11), width=24, state="disabled")
         self._entry_preco.grid(row=2, column=1, sticky="w", pady=10)
         self._entry_preco.bind("<KeyRelease>", self._calcular_quantidade)
 
-        ttk.Button(
-            container, text="Usar Preço Atual",
-            command=self._usar_preco_atual,
-            style="Acao.TButton", cursor="hand2",
-        ).grid(row=2, column=2, sticky="w", padx=(15, 0), pady=10)
-
         ttk.Label(container, text="Valor (USDT):", style="Padrao.TLabel").grid(
             row=3, column=0, sticky="e", pady=10, padx=(0, 15))
-        self._entry_valor = ttk.Entry(container, font=("Segoe UI", 11), width=24)
+        self._entry_valor = ttk.Entry(container, font=("Segoe UI", 11), width=24, state="disabled")
         self._entry_valor.grid(row=3, column=1, sticky="w", pady=10)
         self._entry_valor.bind("<KeyRelease>", self._calcular_quantidade)
 
@@ -151,25 +147,33 @@ class JanelaRegistro(ttk.Frame):
         self._label_quantidade.grid(row=3, column=2, sticky="w", padx=(15, 0))
 
         self._label_ajuda = ttk.Label(container, text="", style="Dica.TLabel", justify="left")
-        self._label_ajuda.grid(row=4, column=1, columnspan=2, sticky="w", pady=(0, 10))
+        self._label_ajuda.grid(row=4, column=1, columnspan=2, sticky="w", pady=(0, 4))
 
-    def _ao_mudar_selecao(self, event=None) -> None:
+        self._label_erro_saldo = ttk.Label(container, text="", style="Erro.TLabel", justify="left")
+        self._label_erro_saldo.grid(row=5, column=1, columnspan=2, sticky="w", pady=(0, 5))
+
+    def _ao_mudar_moeda(self, event=None) -> None:
         self._qtd_max_travada = None
+        self._combo_tipo.set("")
+        self._combo_tipo.config(state="disabled")
+        self._entry_preco.config(state="normal")
+        self._entry_preco.delete(0, tk.END)
+        self._entry_preco.config(state="disabled")
+        self._entry_valor.config(state="normal")
+        self._entry_valor.delete(0, tk.END)
+        self._entry_valor.config(state="disabled")
+        self._label_quantidade.config(text="", style="Info.TLabel")
+        self._label_saldo.config(text="")
         self._label_ajuda.config(text="")
-        self._ao_selecionar_moeda()
-        self._atualizar_saldo_disponivel()
-        self._verificar_venda_total()
+        self._label_erro_saldo.config(text="")
+        self._btn_salvar.config(state="disabled")
 
-    def _ao_selecionar_moeda(self, event=None) -> None:
         moeda = self._combo_moeda.get()
         if not moeda:
             return
 
         if moeda == "USDT":
-            self._combo_tipo.config(values=TipoOperacao.labels_usdt())
-            if self._combo_tipo.get() == TipoOperacao.VENDA_TOTAL.label:
-                self._combo_tipo.set(TipoOperacao.VENDA.label)
-
+            self._combo_tipo.config(values=TipoOperacao.labels_usdt(), state="readonly")
             preco_brl = self._price_manager.preco_brl
             if preco_brl and preco_brl > 1.1:
                 self._label_preco_atual.config(text=f"Cotação BRL: R${preco_brl:.4f}")
@@ -178,24 +182,34 @@ class JanelaRegistro(ttk.Frame):
                 self._label_preco_atual.config(text="Cotação BRL indisponível")
                 taxa = "1.000000"
             self._entry_preco.config(state="normal")
-            self._entry_preco.delete(0, tk.END)
             self._entry_preco.insert(0, taxa)
-            self._calcular_quantidade()
-            return
-
-        self._combo_tipo.config(values=TipoOperacao.labels_crypto())
-        self._entry_preco.config(state="normal")
-        preco = self._price_manager.get_preco(moeda)
-        if preco:
-            self._label_preco_atual.config(text=f"Atual: ${preco:.4f}")
-            self._entry_preco.delete(0, tk.END)
-            self._entry_preco.insert(0, f"{preco:.6f}")
-            self._calcular_quantidade()
         else:
-            self._label_preco_atual.config(text="Preço indisponível")
+            self._combo_tipo.config(values=TipoOperacao.labels_crypto(), state="readonly")
+            preco = self._price_manager.get_preco(moeda)
+            self._entry_preco.config(state="normal")
+            if preco:
+                self._label_preco_atual.config(text=f"Atual: ${preco:.4f}")
+                self._entry_preco.insert(0, f"{preco:.6f}")
+            else:
+                self._label_preco_atual.config(text="Preço indisponível")
+
+    def _ao_mudar_tipo(self, event=None) -> None:
+        self._qtd_max_travada = None
+        self._entry_valor.config(state="normal")
+        self._entry_valor.delete(0, tk.END)
+        self._label_quantidade.config(text="", style="Info.TLabel")
+        self._label_ajuda.config(text="")
+        self._label_erro_saldo.config(text="")
+        self._btn_salvar.config(state="disabled")
+
+        self._atualizar_saldo_disponivel()
+        self._verificar_venda_total()
 
     def _verificar_venda_total(self) -> None:
-        tipo  = TipoOperacao.from_label(self._combo_tipo.get())
+        tipo_label = self._combo_tipo.get()
+        if not tipo_label:
+            return
+        tipo  = TipoOperacao.from_label(tipo_label)
         moeda = self._combo_moeda.get()
 
         if tipo is not TipoOperacao.VENDA_TOTAL or not moeda or moeda == "USDT":
@@ -231,9 +245,13 @@ class JanelaRegistro(ttk.Frame):
         except Exception as e:
             logger.error(f"Erro ao processar venda total: {e}")
 
-    def _atualizar_saldo_disponivel(self, event=None) -> None:
-        moeda = self._combo_moeda.get()
-        tipo  = TipoOperacao.from_label(self._combo_tipo.get())
+    def _atualizar_saldo_disponivel(self) -> None:
+        moeda      = self._combo_moeda.get()
+        tipo_label = self._combo_tipo.get()
+        if not tipo_label:
+            self._label_saldo.config(text="")
+            return
+        tipo = TipoOperacao.from_label(tipo_label)
 
         if tipo in (TipoOperacao.VENDA, TipoOperacao.VENDA_TOTAL) and moeda and moeda != "USDT":
             try:
@@ -249,8 +267,14 @@ class JanelaRegistro(ttk.Frame):
 
     def _calcular_quantidade(self, event=None) -> None:
         try:
-            moeda     = self._combo_moeda.get()
-            tipo      = TipoOperacao.from_label(self._combo_tipo.get())
+            moeda      = self._combo_moeda.get()
+            tipo_label = self._combo_tipo.get()
+            if not tipo_label:
+                self._label_quantidade.config(text="", style="Info.TLabel")
+                self._btn_salvar.config(state="disabled")
+                return
+
+            tipo      = TipoOperacao.from_label(tipo_label)
             valor_str = self._entry_valor.get()
             preco_str = self._entry_preco.get()
 
@@ -260,12 +284,14 @@ class JanelaRegistro(ttk.Frame):
                     style="Travado.TLabel")
                 self._label_ajuda.config(
                     text="💡 Digite no campo Valor (USDT) o que a corretora te pagou após a taxa.")
+                self._verificar_estado_botao()
                 return
 
             self._label_ajuda.config(text="")
 
             if not valor_str or not preco_str:
                 self._label_quantidade.config(text="", style="Info.TLabel")
+                self._btn_salvar.config(state="disabled")
                 return
 
             valor = Decimal(valor_str)
@@ -279,26 +305,51 @@ class JanelaRegistro(ttk.Frame):
                     qtd   = valor / preco
                     texto = f"≈ {float(qtd):.8f} unidades"
                 self._label_quantidade.config(text=texto, style="Info.TLabel")
+                self._verificar_saldo_inline(tipo, moeda, valor)
             else:
                 self._label_quantidade.config(text="", style="Info.TLabel")
+                self._btn_salvar.config(state="disabled")
 
         except (InvalidOperation, ZeroDivisionError):
             self._label_quantidade.config(text="", style="Info.TLabel")
+            self._btn_salvar.config(state="disabled")
 
-    def _usar_preco_atual(self) -> None:
-        moeda = self._combo_moeda.get()
-        if moeda == "USDT":
-            self._ao_selecionar_moeda()
+    def _verificar_saldo_inline(self, tipo: TipoOperacao, moeda: str, valor: Decimal) -> None:
+        if tipo is not TipoOperacao.VENDA or moeda == "USDT":
+            self._label_erro_saldo.config(text="")
+            self._verificar_estado_botao()
             return
+        try:
+            operacoes = self._data_manager.carregar_operacoes()
+            portfolio = self._engine.calcular_portfolio(
+                operacoes, self._price_manager.precos_cache)
+            saldo = Decimal(str(portfolio.get(moeda, {}).get("quantidade_final", 0)))
+            preco_str = self._entry_preco.get()
+            preco     = Decimal(preco_str) if preco_str else Decimal("0")
+            if preco > 0:
+                qtd_solicitada = valor / preco
+                if qtd_solicitada > saldo:
+                    falta = qtd_solicitada - saldo
+                    self._label_erro_saldo.config(
+                        text=f"⚠ Saldo insuficiente! Faltam {float(falta):.8f} {moeda}")
+                    self._btn_salvar.config(state="disabled")
+                    return
+            self._label_erro_saldo.config(text="")
+            self._verificar_estado_botao()
+        except Exception:
+            self._label_erro_saldo.config(text="")
+            self._verificar_estado_botao()
 
-        self._entry_preco.config(state="normal")
-        preco = self._price_manager.get_preco(moeda)
-        if preco:
-            self._entry_preco.delete(0, tk.END)
-            self._entry_preco.insert(0, f"{preco:.6f}")
-            self._verificar_venda_total()
-        else:
-            messagebox.showwarning("Aviso", "Preço não disponível.")
+    def _verificar_estado_botao(self) -> None:
+        try:
+            valor = Decimal(self._entry_valor.get())
+            preco = Decimal(self._entry_preco.get())
+            if valor > 0 and preco > 0:
+                self._btn_salvar.config(state="normal")
+            else:
+                self._btn_salvar.config(state="disabled")
+        except InvalidOperation:
+            self._btn_salvar.config(state="disabled")
 
     def _validar(self) -> list:
         erros = []
@@ -382,22 +433,24 @@ class JanelaRegistro(ttk.Frame):
     def _limpar(self) -> None:
         self._qtd_max_travada = None
         self._combo_moeda.set("")
-        self._combo_tipo.set(TipoOperacao.COMPRA.label)
-        self._entry_valor.delete(0, tk.END)
+        self._combo_tipo.set("")
+        self._combo_tipo.config(state="disabled")
         self._entry_preco.config(state="normal")
         self._entry_preco.delete(0, tk.END)
+        self._entry_preco.config(state="disabled")
+        self._entry_valor.config(state="normal")
+        self._entry_valor.delete(0, tk.END)
+        self._entry_valor.config(state="disabled")
         self._label_quantidade.config(text="", style="Info.TLabel")
         self._label_preco_atual.config(text="")
         self._label_saldo.config(text="")
         self._label_ajuda.config(text="")
+        self._label_erro_saldo.config(text="")
+        self._btn_salvar.config(state="disabled")
 
     def atualizar_lista_moedas(self, novas_moedas: list) -> None:
         self._moedas = novas_moedas
         self._combo_moeda.config(values=self._moedas)
         moeda_atual = self._combo_moeda.get()
         if moeda_atual and moeda_atual not in self._moedas:
-            self._combo_moeda.set("")
-            self._label_preco_atual.config(text="")
-            self._label_quantidade.config(text="")
-            self._label_saldo.config(text="")
-            self._qtd_max_travada = None
+            self._limpar()
