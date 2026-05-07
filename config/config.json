@@ -2,6 +2,10 @@
     "moedas": [
         "BTC",
         "ETH",
+        "UNI",
+        "LINK",
+        "NEAR",
+        "SUI",
         "USDT",
         "XRP",
         "BNB",
@@ -11,12 +15,8 @@
         "DOGE",
         "ADA",
         "BCH",
-        "LINK",
         "XLM",
-        "AVAX",
-        "SUI",
-        "NEAR",
-        "UNI"
+        "AVAX"
     ],
     "exchange": "binance",
     "intervalo_atualizacao": 30

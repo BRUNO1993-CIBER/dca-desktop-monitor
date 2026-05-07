@@ -1,6 +1,7 @@
-# Edição restrita a 'Data' e 'Taxa_BRL' por design intencional: qualquer alteração em Moeda,
-# Operação, Valor ou Preço invalida cálculos derivados (quantidade, médias, P&L).
-# A solução correta é excluir e reinserir — sem debt técnico de recálculo retroativo.
+# Edição restrita a 'Data', 'Taxa_BRL' e 'Operação' por design intencional:
+# qualquer alteração em Moeda, Valor ou Preço invalida cálculos derivados
+# (quantidade, médias, P&L). A solução correta é excluir e reinserir —
+# sem debt técnico de recálculo retroativo.
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -18,7 +19,6 @@ from config.tema_cripto import (
     TEXT_PRIMARY, TEXT_SECONDARY, BORDER,
     tag_cores_treeview,
 )
-
 
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,9 @@ def _garantir_estilo():
 
 class JanelaEdicao(ttk.Frame):
 
-    _CAMPOS_EDITAVEIS = {"Data", "Taxa_BRL"}
+    # "Operação" agora é editável: erro de Compra/Venda não afeta
+    # quantidade nem preço médio — apenas reclassifica a transação.
+    _CAMPOS_EDITAVEIS = {"Data", "Taxa_BRL", "Operação"}
 
     def __init__(
         self,
@@ -165,10 +167,28 @@ class JanelaEdicao(ttk.Frame):
                 font=("Segoe UI", 9, "bold"),
             ).grid(row=0, column=i, padx=10, pady=(0, 4), sticky="w")
 
-            entry = ttk.Entry(form_frame, width=22, style="Cripto.TEntry", font=("Segoe UI", 12), justify="center")
+            # Operação usa Combobox para garantir apenas valores válidos.
+            # state="readonly" impede digitação livre — sem validação extra necessária.
+            if col == "Operação":
+                widget = ttk.Combobox(
+                    form_frame,
+                    values=["Compra", "Venda"],
+                    state="readonly",
+                    width=22,
+                    font=("Segoe UI", 12),
+                    justify="center",
+                )
+            else:
+                widget = ttk.Entry(
+                    form_frame,
+                    width=22,
+                    style="Cripto.TEntry",
+                    font=("Segoe UI", 12),
+                    justify="center",
+                )
 
-            entry.grid(row=1, column=i, padx=10, sticky="ew")
-            self._campos[col] = entry
+            widget.grid(row=1, column=i, padx=10, sticky="ew")
+            self._campos[col] = widget
 
     def _build_obs(self) -> None:
         obs_frame = tk.Frame(self, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
@@ -187,7 +207,8 @@ class JanelaEdicao(ttk.Frame):
         tk.Frame(obs_frame, bg=BORDER, width=1)\
             .pack(side=tk.LEFT, fill="y", pady=6)
 
-        primeira_linha = "SOMENTE A DATA E A TAXA BRL PODEM SER CORRIGIDAS AQUI."
+        # Texto sincronizado com _CAMPOS_EDITAVEIS.
+        primeira_linha = "SOMENTE A DATA, A TAXA BRL E A OPERAÇÃO PODEM SER CORRIGIDAS AQUI."
         restante = (
             "Para ajustar moeda, valor, preço ou qualquer outro dado, exclua esta transação "
             "e a reinsira com as informações corretas — isso garante que todos os cálculos "
@@ -207,10 +228,10 @@ class JanelaEdicao(ttk.Frame):
             padx=6,
             pady=10
         ).pack(side=tk.LEFT, fill="x", expand=True)
-            
+
     def _build_buttons(self) -> None:
         btn_frame = tk.Frame(self, bg=BG_SURFACE)
-        btn_frame.pack(pady=(12, 10)) 
+        btn_frame.pack(pady=(12, 10))
 
         self.btn_load = ttk.Button(
             btn_frame, text="📥  Carregar Selecionada",
@@ -308,12 +329,17 @@ class JanelaEdicao(ttk.Frame):
         self._op_original = operacoes[self._indice_editando]
 
         for col, valor in zip(self._data_manager.headers, valores):
-            entry = self._campos[col]
-            entry.config(state="normal")
-            valor_fmt = f"{float(valor):.2f}" if col == "Taxa_BRL" and valor != "" else valor
-            entry.insert(0, valor_fmt)
-            if col not in self._CAMPOS_EDITAVEIS:
-                entry.config(state="readonly")
+            widget = self._campos[col]
+
+            # Combobox não tem .insert() — usa .set() para preencher o valor atual.
+            if isinstance(widget, ttk.Combobox):
+                widget.set(valor)
+            else:
+                widget.config(state="normal")
+                valor_fmt = f"{float(valor):.2f}" if col == "Taxa_BRL" and valor != "" else valor
+                widget.insert(0, valor_fmt)
+                if col not in self._CAMPOS_EDITAVEIS:
+                    widget.config(state="readonly")
 
     def _salvar_edicao(self) -> None:
         if self._indice_editando is None or self._op_original is None:
@@ -336,7 +362,18 @@ class JanelaEdicao(ttk.Frame):
                 )
                 return
 
-            nova_op = {**self._op_original, "Data": nova_data, "Taxa_BRL": taxa_brl}
+            # Valida que o usuário selecionou uma opção no Combobox.
+            nova_operacao = self._campos["Operação"].get().strip()
+            if not nova_operacao:
+                messagebox.showerror("Erro", "Selecione uma operação (Compra ou Venda).")
+                return
+
+            nova_op = {
+                **self._op_original,
+                "Data": nova_data,
+                "Taxa_BRL": taxa_brl,
+                "Operação": nova_operacao,
+            }
 
             if self._data_manager.atualizar_operacao(self._indice_editando, nova_op):
                 messagebox.showinfo("Sucesso", "Transação atualizada com sucesso!")
@@ -365,8 +402,12 @@ class JanelaEdicao(ttk.Frame):
                 self.atualizar()
 
     def _limpar_form(self) -> None:
+        # Combobox não tem .delete() — reseta com .set("").
         for entry in self._campos.values():
-            entry.config(state="normal")
-            entry.delete(0, tk.END)
+            if isinstance(entry, ttk.Combobox):
+                entry.set("")
+            else:
+                entry.config(state="normal")
+                entry.delete(0, tk.END)
         self._indice_editando = None
         self._op_original = None
