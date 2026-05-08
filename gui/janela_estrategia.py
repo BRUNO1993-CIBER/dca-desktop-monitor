@@ -345,116 +345,231 @@ COR_TIPO = {
     "Stablecoin — Maior Liquidez Global":        "#4ade80",
 }
 
-
 class JanelaEstrategia(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent, bg=BG_DEEP)
         self._criar_interface()
 
     def _criar_interface(self):
+
         topo = tk.Frame(self, bg=BG_CARD)
         topo.pack(fill="x", padx=20, pady=(20, 0))
 
         tk.Label(
             topo,
-            text="📊 ANÁLISE FUNDAMENTAL DE ATIVOS DIGITAIS",
+            text="📊 ANÁLISE FUNDAMENTAL DOS MAIORES ATIVOS DIGITAIS",
             font=("Segoe UI", 15, "bold"),
-            bg=BG_CARD, fg=BTC_ORANGE, pady=8
+            bg=BG_CARD,
+            fg=BTC_ORANGE,
+            pady=10
         ).pack(fill="x")
 
         tk.Label(
             topo,
-            text="Maio de 2026  ·  Identidade · Tecnologia · Tokenomics · Mercado · Risco · Ecossistema · Histórico",
+            text="Maio de 2026 · Identidade · Tecnologia · Tokenomics · Mercado · Risco · Ecossistema · Histórico",
             font=("Segoe UI", 9, "italic"),
-            bg=BG_CARD, fg=TEXT_SECONDARY, pady=4
+            bg=BG_CARD,
+            fg=TEXT_SECONDARY,
+            pady=4
         ).pack(fill="x")
 
-        tk.Frame(topo, bg=CYAN, height=2).pack(fill="x", padx=10, pady=(4, 0))
+        tk.Frame(
+            topo,
+            bg=CYAN,
+            height=2
+        ).pack(fill="x", padx=10, pady=(4, 0))
 
         area = tk.Frame(self, bg=BG_DEEP)
-        area.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        area.pack(fill="both", expand=True, padx=4, pady=(0, 10))
 
-        canvas = tk.Canvas(area, bg=BG_DEEP, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(area, orient="vertical", command=canvas.yview)
+        canvas = tk.Canvas(
+            area,
+            bg=BG_DEEP,
+            highlightthickness=0
+        )
+
+        scrollbar = ttk.Scrollbar(
+            area,
+            orient="vertical",
+            command=canvas.yview
+        )
 
         canvas.configure(yscrollcommand=scrollbar.set)
+
         scrollbar.pack(side="right", fill="y")
         canvas.pack(side="left", fill="both", expand=True)
 
         interior = tk.Frame(canvas, bg=BG_DEEP)
-        janela_id = canvas.create_window((0, 0), window=interior, anchor="nw")
 
-        def _ajustar_largura(event):
-            canvas.itemconfig(janela_id, width=event.width)
+        janela_canvas = canvas.create_window(
+            (0, 0),
+            window=interior,
+            anchor="nw"
+        )
 
-        def _ajustar_scroll(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
+        def _resize_canvas(event):
 
-        canvas.bind("<Configure>", _ajustar_largura)
-        interior.bind("<Configure>", _ajustar_scroll)
-        canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"))
+            largura_canvas = event.width
+            largura_conteudo = min(1900, largura_canvas - 8)
 
-        for simbolo, dados in MOEDAS.items():
-            self._criar_card(interior, simbolo, dados)
+            x = (largura_canvas - largura_conteudo) // 2
+
+            canvas.coords(janela_canvas, x, 0)
+
+            canvas.itemconfig(
+                janela_canvas,
+                width=largura_conteudo
+            )
+
+        canvas.bind("<Configure>", _resize_canvas)
+
+        def _config_scroll(event):
+            canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+
+        interior.bind("<Configure>", _config_scroll)
+
+        def _mousewheel(event):
+            canvas.yview_scroll(
+                int(-1 * (event.delta / 120)),
+                "units"
+            )
+
+        self.bind_all("<MouseWheel>", _mousewheel)
+
+        self.bind_all(
+            "<Button-4>",
+            lambda e: canvas.yview_scroll(-1, "units")
+        )
+
+        self.bind_all(
+            "<Button-5>",
+            lambda e: canvas.yview_scroll(1, "units")
+        )
+
+        COLUNAS = 3
+
+        for i, (simbolo, dados) in enumerate(MOEDAS.items()):
+
+            linha = i // COLUNAS
+            coluna = i % COLUNAS
+
+            card = self._criar_card(
+                interior,
+                simbolo,
+                dados
+            )
+
+            card.grid(
+                row=linha,
+                column=coluna,
+                padx=4,
+                pady=6,
+                sticky="nsew"
+            )
+
+        for c in range(COLUNAS):
+            interior.grid_columnconfigure(c, weight=1)
 
     def _criar_card(self, parent, simbolo, dados):
+
         cor = COR_TIPO.get(dados["tipo"], CYAN)
 
-        card = tk.Frame(parent, bg=BG_SECTION, highlightthickness=1, highlightbackground=cor)
-        card.pack(fill="x", padx=10, pady=8)
+        card = tk.Frame(
+            parent,
+            bg=BG_SECTION,
+            highlightbackground=cor,
+            highlightthickness=1
+        )
 
         header = tk.Frame(card, bg=BG_SECTION)
-        header.pack(fill="x", padx=15, pady=(10, 5))
+        header.pack(fill="x", pady=(12, 6))
 
         tk.Label(
-            header, text=simbolo,
-            font=("Segoe UI", 14, "bold"), bg=BG_SECTION, fg=cor
-        ).pack(side="left")
+            header,
+            text=simbolo,
+            font=("Segoe UI", 16, "bold"),
+            bg=BG_SECTION,
+            fg=cor
+        ).pack(anchor="center")
 
         tk.Label(
-            header, text=f"  {dados['nome']}",
-            font=("Segoe UI", 11), bg=BG_SECTION, fg=WHITE
-        ).pack(side="left")
+            header,
+            text=dados["nome"],
+            font=("Segoe UI", 11),
+            bg=BG_SECTION,
+            fg=WHITE
+        ).pack(anchor="center")
 
         tk.Label(
-            header, text=f"  [{dados['tipo']}]",
-            font=("Segoe UI", 9, "italic"), bg=BG_SECTION, fg=cor
-        ).pack(side="left")
+            header,
+            text=f"[{dados['tipo']}]",
+            font=("Segoe UI", 9, "italic"),
+            bg=BG_SECTION,
+            fg=cor
+        ).pack(anchor="center", pady=(2, 0))
 
-        tk.Frame(card, bg=cor, height=1).pack(fill="x", padx=15)
+        tk.Frame(
+            card,
+            bg=cor,
+            height=1
+        ).pack(fill="x", padx=20, pady=(8, 0))
 
         corpo = tk.Frame(card, bg=BG_SECTION)
-        corpo.pack(fill="x", padx=15, pady=(6, 12))
+        corpo.pack(fill="both", expand=True, padx=25, pady=(12, 18))
 
         for titulo_sec, campos in SECOES:
-            sec = tk.Frame(corpo, bg=BG_SECTION)
-            sec.pack(fill="x", pady=(8, 2))
+
+            sec = tk.Frame(
+                corpo,
+                bg=BG_SECTION
+            )
+
+            sec.pack(fill="x", pady=(8, 10))
 
             tk.Label(
-                sec, text=titulo_sec,
-                font=("Segoe UI", 9, "bold"), bg=BG_SECTION, fg=cor
-            ).pack(anchor="w")
+                sec,
+                text=titulo_sec,
+                font=("Segoe UI", 10, "bold"),
+                bg=BG_SECTION,
+                fg=cor
+            ).pack(anchor="center", pady=(0, 8))
 
             for campo in campos:
+
                 valor = dados.get(campo)
+
                 if not valor:
                     continue
-                linha = tk.Frame(sec, bg=BG_SECTION)
-                linha.pack(fill="x", padx=8, pady=1)
+
+                bloco = tk.Frame(
+                    sec,
+                    bg=BG_SECTION
+                )
+
+                bloco.pack(fill="x", pady=4)
 
                 tk.Label(
-                    linha,
-                    text=campo.replace("_", " ").upper() + ":",
+                    bloco,
+                    text=campo.replace("_", " ").upper(),
                     font=("Segoe UI", 8, "bold"),
-                    bg=BG_SECTION, fg=TEXT_SECONDARY,
-                    width=20, anchor="w"
-                ).pack(side="left")
+                    bg=BG_SECTION,
+                    fg=TEXT_SECONDARY,
+                    justify="center"
+                ).pack(anchor="center")
 
                 tk.Label(
-                    linha,
+                    bloco,
                     text=valor,
                     font=("Segoe UI", 9),
-                    bg=BG_SECTION, fg=WHITE,
-                    anchor="w", justify="left",
-                    wraplength=0
-                ).pack(side="left", fill="x", expand=True)
+                    bg=BG_SECTION,
+                    fg=WHITE,
+                    justify="center",
+                    wraplength=500
+                ).pack(
+                    anchor="center",
+                    pady=(2, 8)
+                )
+
+        return card
