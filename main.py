@@ -57,6 +57,8 @@ class InicializadorSplash:
         self._start_time = time.time()
         self._status_msg = "Iniciando sistema..."
 
+        self._carregando = False
+
         self._construir_interface()
         self._maximizar_e_mostrar()
 
@@ -323,7 +325,6 @@ class PortfolioDCA:
         try:
             self.aba_distribuicao.atualizar()
             self.aba_caixa.atualizar()
-            self.aba_edicao.atualizar()
             self._atualizar_status("✓ Atualizado!", NEON_GREEN)
         except Exception:
             self._atualizar_status("⚠ Erro ao atualizar interface.", "#e3b341")

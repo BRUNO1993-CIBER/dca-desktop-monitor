@@ -69,6 +69,7 @@ class JanelaEdicao(ttk.Frame):
         self._dados_carregados = False
         self._mapa_indices = {}
         self._op_original: Optional[dict] = None
+        self._carregando = False 
 
         self._build_ui()
         self.after(100, self.atualizar)
@@ -249,6 +250,11 @@ class JanelaEdicao(ttk.Frame):
     def atualizar(self) -> None:
         if self._indice_editando is not None:
             return
+        
+        if self._carregando:  
+            return
+
+        self._carregando = True     
 
         self.lbl_status.config(text="🔄 Carregando histórico...")
         self.btn_load.config(state="disabled")
@@ -275,10 +281,12 @@ class JanelaEdicao(ttk.Frame):
 
             self.after(0, lambda: self._renderizar_tree(ops_com_indice))
         except Exception as e:
+            self._carregando = False
             self.after(0, lambda: self.lbl_status.config(text="⚠️ Erro ao carregar", fg="red"))
             logger.error(f"Erro no histórico: {e}")
 
     def _renderizar_tree(self, ops_com_indice: list) -> None:
+        self._carregando = False 
         self._mapa_indices.clear()
 
         moeda_sel = self._filtro_moeda.get()

@@ -9,6 +9,7 @@ import logging
 getcontext().prec = 18
 logger = logging.getLogger(__name__)
 
+
 class TipoOperacao(Enum):
     COMPRA      = "compra"
     VENDA       = "venda"
@@ -80,6 +81,9 @@ class JanelaRegistro(ttk.Frame):
         style.configure("Erro.TLabel",     font=("Segoe UI", 9, "bold"),   foreground="#cc0000")
         style.configure("Accent.TButton",  font=("Segoe UI", 12, "bold"))
 
+    def _eh_stablecoin(self, moeda: str) -> bool:
+        return moeda in ("USDT", "USDC")
+
     def atualizar(self) -> None:
         self._atualizar_saldo_disponivel()
 
@@ -131,8 +135,8 @@ class JanelaRegistro(ttk.Frame):
         self._label_saldo = ttk.Label(container, text="", style="Saldo.TLabel")
         self._label_saldo.grid(row=1, column=2, sticky="w", padx=(15, 0))
 
-        ttk.Label(container, text="Preço Unitário:", style="Padrao.TLabel").grid(
-            row=2, column=0, sticky="e", pady=10, padx=(0, 15))
+        self._label_preco_titulo = ttk.Label(container, text="Preço Unitário:", style="Padrao.TLabel")
+        self._label_preco_titulo.grid(row=2, column=0, sticky="e", pady=10, padx=(0, 15))
         self._entry_preco = ttk.Entry(container, font=("Segoe UI", 11), width=24, state="disabled")
         self._entry_preco.grid(row=2, column=1, sticky="w", pady=10)
         self._entry_preco.bind("<KeyRelease>", self._calcular_quantidade)
@@ -167,20 +171,24 @@ class JanelaRegistro(ttk.Frame):
         self._label_ajuda.config(text="")
         self._label_erro_saldo.config(text="")
         self._btn_salvar.config(state="disabled")
+        self._label_preco_titulo.config(text="Preço Unitário:")
 
         moeda = self._combo_moeda.get()
         if not moeda:
             return
 
-        if moeda == "USDT":
+        if self._eh_stablecoin(moeda):
             self._combo_tipo.config(values=TipoOperacao.labels_usdt(), state="readonly")
             preco_brl = self._price_manager.preco_brl
             if preco_brl and preco_brl > 1.1:
-                self._label_preco_atual.config(text=f"Cotação BRL: R${preco_brl:.4f}")
                 taxa = f"{preco_brl:.4f}"
+                self._label_preco_atual.config(text=f"Cotação BRL: R${preco_brl:.4f}")
             else:
-                self._label_preco_atual.config(text="Cotação BRL indisponível")
                 taxa = "1.000000"
+                self._label_preco_atual.config(text="Cotação BRL indisponível")
+            self._label_preco_titulo.config(text="Taxa BRL:")
+            self._label_ajuda.config(
+                text=f"💡 {moeda} equivale a $1,00 USD. Informe a cotação do dólar em reais.")
             self._entry_preco.config(state="normal")
             self._entry_preco.insert(0, taxa)
         else:
@@ -198,9 +206,12 @@ class JanelaRegistro(ttk.Frame):
         self._entry_valor.config(state="normal")
         self._entry_valor.delete(0, tk.END)
         self._label_quantidade.config(text="", style="Info.TLabel")
-        self._label_ajuda.config(text="")
         self._label_erro_saldo.config(text="")
         self._btn_salvar.config(state="disabled")
+
+        moeda = self._combo_moeda.get()
+        if not self._eh_stablecoin(moeda):
+            self._label_ajuda.config(text="")
 
         self._atualizar_saldo_disponivel()
         self._verificar_venda_total()
@@ -212,7 +223,7 @@ class JanelaRegistro(ttk.Frame):
         tipo  = TipoOperacao.from_label(tipo_label)
         moeda = self._combo_moeda.get()
 
-        if tipo is not TipoOperacao.VENDA_TOTAL or not moeda or moeda == "USDT":
+        if tipo is not TipoOperacao.VENDA_TOTAL or not moeda or self._eh_stablecoin(moeda):
             self._calcular_quantidade()
             return
 
@@ -253,7 +264,7 @@ class JanelaRegistro(ttk.Frame):
             return
         tipo = TipoOperacao.from_label(tipo_label)
 
-        if tipo in (TipoOperacao.VENDA, TipoOperacao.VENDA_TOTAL) and moeda and moeda != "USDT":
+        if tipo in (TipoOperacao.VENDA, TipoOperacao.VENDA_TOTAL) and moeda and not self._eh_stablecoin(moeda):
             try:
                 operacoes = self._data_manager.carregar_operacoes()
                 portfolio = self._engine.calcular_portfolio(
@@ -287,7 +298,8 @@ class JanelaRegistro(ttk.Frame):
                 self._verificar_estado_botao()
                 return
 
-            self._label_ajuda.config(text="")
+            if not self._eh_stablecoin(moeda):
+                self._label_ajuda.config(text="")
 
             if not valor_str or not preco_str:
                 self._label_quantidade.config(text="", style="Info.TLabel")
@@ -298,9 +310,9 @@ class JanelaRegistro(ttk.Frame):
             preco = Decimal(preco_str)
 
             if valor > 0 and preco > 0:
-                if moeda == "USDT":
+                if self._eh_stablecoin(moeda):
                     qtd   = valor
-                    texto = f"= {float(qtd):.2f} USDT (taxa: R${float(preco):.4f})"
+                    texto = f"= {float(qtd):.2f} {moeda}  (taxa R${float(preco):.4f}/USD)"
                 else:
                     qtd   = valor / preco
                     texto = f"≈ {float(qtd):.8f} unidades"
@@ -315,7 +327,7 @@ class JanelaRegistro(ttk.Frame):
             self._btn_salvar.config(state="disabled")
 
     def _verificar_saldo_inline(self, tipo: TipoOperacao, moeda: str, valor: Decimal) -> None:
-        if tipo is not TipoOperacao.VENDA or moeda == "USDT":
+        if tipo is not TipoOperacao.VENDA or self._eh_stablecoin(moeda):
             self._label_erro_saldo.config(text="")
             self._verificar_estado_botao()
             return
@@ -383,14 +395,14 @@ class JanelaRegistro(ttk.Frame):
             preco    = Decimal(self._entry_preco.get())
             taxa_brl = self._price_manager.preco_brl or 0.0
 
-            if moeda == "USDT":
+            if self._eh_stablecoin(moeda):
                 quantidade = valor
             elif tipo is TipoOperacao.VENDA_TOTAL and self._qtd_max_travada is not None:
                 quantidade = self._qtd_max_travada
             else:
                 quantidade = valor / preco
 
-            if tipo is TipoOperacao.COMPRA and moeda != "USDT":
+            if tipo is TipoOperacao.COMPRA and not self._eh_stablecoin(moeda):
                 operacoes = self._data_manager.carregar_operacoes()
                 validacao = self._engine.validar_saldo_suficiente(operacoes, float(valor))
                 if not validacao["saldo_suficiente"]:
@@ -417,8 +429,8 @@ class JanelaRegistro(ttk.Frame):
 
             if tipo is TipoOperacao.VENDA_TOTAL:
                 msg = f"Venda Total executada! Saldo de {moeda} zerado com sucesso."
-            elif moeda == "USDT":
-                msg = f"{'Depósito' if tipo_csv == 'compra' else 'Saque'} de ${valor:,.2f} USDT registrado!"
+            elif self._eh_stablecoin(moeda):
+                msg = f"{'Depósito' if tipo_csv == 'compra' else 'Saque'} de ${valor:,.2f} {moeda} registrado!"
             else:
                 msg = f"{tipo_csv.title()} de {moeda} registrada com sucesso!"
 
@@ -446,6 +458,7 @@ class JanelaRegistro(ttk.Frame):
         self._label_saldo.config(text="")
         self._label_ajuda.config(text="")
         self._label_erro_saldo.config(text="")
+        self._label_preco_titulo.config(text="Preço Unitário:")
         self._btn_salvar.config(state="disabled")
 
     def atualizar_lista_moedas(self, novas_moedas: list) -> None:
