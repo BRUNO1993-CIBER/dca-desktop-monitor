@@ -26,18 +26,19 @@ from gui.janela_distribuicao import JanelaDistribuicao
 from gui.janela_registro import JanelaRegistro
 from gui.janela_caixa import JanelaCaixa
 from gui.janela_moedas import JanelaMoedas
+from gui.janela_estrategia import JanelaEstrategia
+
 from config.tema_cripto import (
     aplicar_tema,
     BG_DEEP, BG_CARD, BG_INPUT,
     BTC_ORANGE, NEON_GREEN, CYAN,
     TEXT_SECONDARY,
 )
+
 from config.carregar_json import _carregar_config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
-
 
 CONFIG = _carregar_config()
 MOEDAS_SUPORTADAS = CONFIG["moedas"]
@@ -252,11 +253,14 @@ class PortfolioDCA:
             price_manager=self.price_manager
         )
 
+        self.aba_estrategia = JanelaEstrategia(self.notebook)
+
         self.notebook.add(self.aba_distribuicao, text="📈  Dashboard Geral")
         self.notebook.add(self.aba_caixa,        text="💰  Caixa (USDT)")
         self.notebook.add(self.aba_registro,     text="✏️  Registrar Operação")
         self.notebook.add(self.aba_edicao,       text="⚙️  Histórico e Edição")
         self.notebook.add(self.aba_moedas,       text="🪙  Gerenciar Moedas")
+        self.notebook.add(self.aba_estrategia,   text="🧠  Tese Institucional")
 
         status_frame = tk.Frame(self.janela, bg=BG_CARD, pady=4)
         status_frame.pack(side=tk.BOTTOM, fill=tk.X)

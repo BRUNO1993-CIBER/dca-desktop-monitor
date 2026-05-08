@@ -2,21 +2,14 @@
     "moedas": [
         "BTC",
         "ETH",
-        "UNI",
+        "SOL",
         "LINK",
+        "BNB",
+        "UNI",
         "NEAR",
         "SUI",
-        "USDT",
-        "XRP",
-        "BNB",
         "USDC",
-        "SOL",
-        "TRX",
-        "DOGE",
-        "ADA",
-        "BCH",
-        "XLM",
-        "AVAX"
+        "USDT"
     ],
     "exchange": "binance",
     "intervalo_atualizacao": 30
