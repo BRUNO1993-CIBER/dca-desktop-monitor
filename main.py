@@ -1,7 +1,3 @@
-# portifolio_dca.py — Portfolio CRIPTO | Entrypoint, splash screen e controller principal.
-# Countdown de atualização automática gerenciado via janela.after (main thread),
-# evitando race conditions com tkinter. Network/cálculo em daemon threads separados.
-
 import threading
 import time
 import logging
@@ -44,12 +40,13 @@ CONFIG = _carregar_config()
 MOEDAS_SUPORTADAS = CONFIG["moedas"]
 
 class InicializadorSplash:
-    def __init__(self):
-        self.root = tk.Tk()
-        self.root.title("Portfolio CRIPTO")
-        self.root.resizable(False, False)
-        self.root.withdraw()
-        self.root.configure(bg=BG_DEEP)
+    def __init__(self, parent):
+        self.parent = parent
+        self.splash = tk.Toplevel(parent)
+        self.splash.title("Portfolio CRIPTO")
+        self.splash.resizable(False, False)
+        self.splash.withdraw()
+        self.splash.configure(bg=BG_DEEP)
 
         self.sucesso = False
         self.data_manager = None
@@ -64,16 +61,16 @@ class InicializadorSplash:
 
         self._executor = ThreadPoolExecutor(max_workers=1)
         self._future = self._executor.submit(self._carregar_dados)
-        self.root.after(100, self._checar_thread)
+        self.splash.after(100, self._checar_thread)
 
     def _maximizar_e_mostrar(self):
-        self.root.update_idletasks()
+        self.splash.update_idletasks()
         try:
-            self.root.state("zoomed")
+            self.splash.state("zoomed")
         except Exception:
-            self.root.attributes("-zoomed", True)
+            self.splash.attributes("-zoomed", True)
 
-        self.root.deiconify()
+        self.splash.deiconify()
 
         base_dir = os.path.dirname(os.path.abspath(__file__))
         caminho_ico = os.path.join(base_dir, "img", "favicon.ico")
@@ -81,15 +78,15 @@ class InicializadorSplash:
 
         try:
             if platform.system() == "Windows" and os.path.exists(caminho_ico):
-                self.root.iconbitmap(caminho_ico)
+                self.splash.iconbitmap(caminho_ico)
             if os.path.exists(caminho_png):
                 icone_img = tk.PhotoImage(file=caminho_png)
-                self.root.iconphoto(True, icone_img)
+                self.splash.iconphoto(True, icone_img)
         except Exception:
             pass
 
     def _construir_interface(self):
-        self.root.configure(bg=BG_DEEP)
+        self.splash.configure(bg=BG_DEEP)
 
         base_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -97,13 +94,13 @@ class InicializadorSplash:
         try:
             if os.path.exists(caminho_bg):
                 self.bg_image = tk.PhotoImage(file=caminho_bg)
-                bg_label = tk.Label(self.root, image=self.bg_image)
+                bg_label = tk.Label(self.splash, image=self.bg_image)
                 bg_label.place(x=0, y=0, relwidth=1, relheight=1)
         except Exception as e:
-            logger.warning(f"Fundo splash: {e}")
+            logger.warning(f"{e}")
 
         container = tk.Frame(
-            self.root,
+            self.splash,
             bg=BG_CARD,
             highlightbackground=BTC_ORANGE,
             highlightthickness=2,
@@ -181,6 +178,16 @@ class InicializadorSplash:
         if self._future.done():
             try:
                 self.data_manager, self.price_manager = self._future.result()
+                
+                self.lbl_status.config(text="Renderizando interface gráfica...")
+                self.splash.update()
+
+                self.parent.app = PortfolioDCA(
+                    janela=self.parent, 
+                    data_manager=self.data_manager, 
+                    price_manager=self.price_manager
+                )
+
                 self.sucesso = True
                 self._fade_out()
             except Exception as e:
@@ -190,34 +197,39 @@ class InicializadorSplash:
             messagebox.showerror("Timeout", "Tempo limite de 20s excedido. ERRO!")
             self._encerrar()
         else:
-            self.root.after(50, self._checar_thread)
+            self.splash.after(50, self._checar_thread)
 
     def _fade_out(self):
-        alpha = self.root.attributes("-alpha")
+        alpha = self.splash.attributes("-alpha")
         if alpha > 0:
-            self.root.attributes("-alpha", max(0.0, alpha - 0.15))
-            self.root.after(30, self._fade_out)
+            self.splash.attributes("-alpha", max(0.0, alpha - 0.15))
+            self.splash.after(30, self._fade_out)
         else:
             self._encerrar()
 
     def _encerrar(self):
-            try:
-                if self.progresso.winfo_exists():
-                    self.progresso.stop()
-            except Exception:
-                pass
-                
-            self.root.destroy()
-            self.root.quit()
+        try:
+            if self.progresso.winfo_exists():
+                self.progresso.stop()
+        except Exception:
+            pass
+            
+        self.splash.destroy()
+        
+        if self.sucesso:
+            self.parent.deiconify()
+        else:
+            self.parent.destroy()
 
 class PortfolioDCA:
-    def __init__(self, data_manager, price_manager):
+    def __init__(self, janela, data_manager, price_manager):
         self.data_manager = data_manager
         self.price_manager = price_manager
         self._stop_updates = False
 
-        self.janela = ThemedTk(theme="arc")
+        self.janela = janela
         self.janela.title("Portfolio CRIPTO — Dashboard Interativo")
+        self.janela.protocol("WM_DELETE_WINDOW", self._on_closing)
 
         self._criar_interface()
         self._preencher_dados_iniciais()
@@ -332,15 +344,11 @@ class PortfolioDCA:
             self._reiniciar_countdown()
 
     def _ao_alterar_moedas(self, novas_moedas: list) -> None:
-
-            global MOEDAS_SUPORTADAS
-            MOEDAS_SUPORTADAS = novas_moedas
-
-            self.aba_registro.atualizar_lista_moedas(novas_moedas)
-
-            self._atualizar_status("🪙 Novas moedas salvas! Buscando preços...", CYAN)
-            
-            self.atualizar_todas_as_analises()
+        global MOEDAS_SUPORTADAS
+        MOEDAS_SUPORTADAS = novas_moedas
+        self.aba_registro.atualizar_lista_moedas(novas_moedas)
+        self._atualizar_status("🪙 Novas moedas salvas! Buscando preços...", CYAN)
+        self.atualizar_todas_as_analises()
             
     def _atualizar_status(self, mensagem: str, cor: str = TEXT_SECONDARY) -> None:
         def _update():
@@ -350,26 +358,15 @@ class PortfolioDCA:
         else:
             self.janela.after(0, _update)
 
-    def executar(self) -> None:
-        try:
-            self.janela.protocol("WM_DELETE_WINDOW", self._on_closing)
-            self.janela.mainloop()
-        finally:
-            self._stop_updates = True
-
     def _on_closing(self) -> None:
         self._countdown_ativo = False
         self._stop_updates = True
         self.janela.destroy()
 
-
 if __name__ == "__main__":
-    splash = InicializadorSplash()
-    splash.root.mainloop()
-
-    if splash.sucesso:
-        app = PortfolioDCA(
-            data_manager=splash.data_manager,
-            price_manager=splash.price_manager,
-        )
-        app.executar()
+    root_principal = ThemedTk(theme="arc")
+    root_principal.withdraw()
+    
+    splash = InicializadorSplash(root_principal)
+    
+    root_principal.mainloop()
