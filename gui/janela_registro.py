@@ -2,50 +2,13 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, getcontext
-from enum import Enum
 from typing import Any, Callable, List, Optional
 import logging
 
+from backend.tipo_operacao import TipoOperacao
+
 getcontext().prec = 18
 logger = logging.getLogger(__name__)
-
-
-class TipoOperacao(Enum):
-    COMPRA      = "compra"
-    VENDA       = "venda"
-    VENDA_TOTAL = "venda_total"
-
-    @property
-    def label(self) -> str:
-        return {
-            "COMPRA":      "Compra",
-            "VENDA":       "Venda",
-            "VENDA_TOTAL": "Venda Total (MAX)",
-        }[self.name]
-
-    @property
-    def csv_value(self) -> str:
-        return {
-            "COMPRA":      "compra",
-            "VENDA":       "venda",
-            "VENDA_TOTAL": "venda",
-        }[self.name]
-
-    @classmethod
-    def from_label(cls, label: str) -> "TipoOperacao":
-        for membro in cls:
-            if membro.label == label:
-                return membro
-        raise KeyError(f"TipoOperacao desconhecido: {label!r}")
-
-    @classmethod
-    def labels_crypto(cls) -> list:
-        return [m.label for m in cls]
-
-    @classmethod
-    def labels_usdt(cls) -> list:
-        return [cls.COMPRA.label, cls.VENDA.label]
-
 
 class JanelaRegistro(ttk.Frame):
 
