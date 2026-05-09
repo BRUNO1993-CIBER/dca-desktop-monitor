@@ -302,21 +302,26 @@ class PortfolioDCA:
     def _iniciar_atualizacoes_automaticas(self) -> None:
         self._countdown_ativo = True
         self._countdown = CONFIG["intervalo_atualizacao"]
+        self._after_id = None  
         self._tick_countdown()
 
     def _tick_countdown(self):
         if not self._countdown_ativo:
             return
         if self._countdown > 0:
-            self.aba_distribuicao.set_countdown(self._countdown)  
+            self.aba_distribuicao.set_countdown(self._countdown)
             self._countdown -= 1
-            self.janela.after(1000, self._tick_countdown)
+            self._after_id = self.janela.after(1000, self._tick_countdown)
         else:
             self.aba_distribuicao.set_countdown(0)
+            self._after_id = None
             if CCXT_AVAILABLE:
                 self.atualizar_todas_as_analises()
 
     def _reiniciar_countdown(self):
+        if self._after_id is not None:
+            self.janela.after_cancel(self._after_id)
+            self._after_id = None
         self._countdown = CONFIG["intervalo_atualizacao"]
         self._tick_countdown()
 
