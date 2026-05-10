@@ -19,7 +19,7 @@ if platform.system() == "Windows":
 from backend.backend import DataManager, PriceManager, AnalysisEngine, CCXT_AVAILABLE
 from gui.janela_edicao import JanelaEdicao
 from gui.janela_distribuicao import JanelaDistribuicao
-from gui.janela_registro import JanelaRegistro
+from gui.janela_registro_logica import JanelaRegistro
 from gui.janela_caixa import JanelaCaixa
 from gui.janela_moedas import JanelaMoedas
 from gui.janela_estrategia import JanelaEstrategia
@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 CONFIG = _carregar_config()
 MOEDAS_SUPORTADAS = CONFIG["moedas"]
 
+
 class InicializadorSplash:
     def __init__(self, parent):
         self.parent = parent
@@ -53,7 +54,6 @@ class InicializadorSplash:
         self.price_manager = None
         self._start_time = time.time()
         self._status_msg = "Iniciando sistema..."
-
         self._carregando = False
 
         self._construir_interface()
@@ -178,14 +178,14 @@ class InicializadorSplash:
         if self._future.done():
             try:
                 self.data_manager, self.price_manager = self._future.result()
-                
+
                 self.lbl_status.config(text="Renderizando interface gráfica...")
                 self.splash.update()
 
                 self.parent.app = PortfolioDCA(
-                    janela=self.parent, 
-                    data_manager=self.data_manager, 
-                    price_manager=self.price_manager
+                    janela=self.parent,
+                    data_manager=self.data_manager,
+                    price_manager=self.price_manager,
                 )
 
                 self.sucesso = True
@@ -213,18 +213,20 @@ class InicializadorSplash:
                 self.progresso.stop()
         except Exception:
             pass
-            
+
         self.splash.destroy()
-        
+
         if self.sucesso:
             self.parent.deiconify()
         else:
             self.parent.destroy()
 
+
 class PortfolioDCA:
     def __init__(self, janela, data_manager, price_manager):
         self.data_manager = data_manager
         self.price_manager = price_manager
+        self.analysis_engine = AnalysisEngine()
         self._stop_updates = False
 
         self.janela = janela
@@ -256,15 +258,15 @@ class PortfolioDCA:
         self.notebook = ttk.Notebook(self.janela)
         self.notebook.pack(fill="both", expand=True, padx=15, pady=15)
 
-        self.aba_distribuicao = JanelaDistribuicao(self.notebook, self.data_manager, self.price_manager, AnalysisEngine)
-        self.aba_caixa        = JanelaCaixa(self.notebook, self.data_manager, self.price_manager, AnalysisEngine)
-        self.aba_registro     = JanelaRegistro(self.notebook, self.data_manager, self.price_manager, AnalysisEngine, MOEDAS_SUPORTADAS, self.atualizar_todas_as_analises)
-        self.aba_edicao       = JanelaEdicao(self.notebook, self.data_manager, self.price_manager, AnalysisEngine, self.atualizar_todas_as_analises)
+        self.aba_distribuicao = JanelaDistribuicao(self.notebook, self.data_manager, self.price_manager, self.analysis_engine)
+        self.aba_caixa        = JanelaCaixa(self.notebook, self.data_manager, self.price_manager, self.analysis_engine)
+        self.aba_registro     = JanelaRegistro(self.notebook, self.data_manager, self.price_manager, self.analysis_engine, MOEDAS_SUPORTADAS, self.atualizar_todas_as_analises)
+        self.aba_edicao       = JanelaEdicao(self.notebook, self.data_manager, self.price_manager, self.analysis_engine, self.atualizar_todas_as_analises)
 
         self.aba_moedas = JanelaMoedas(
-            self.notebook, 
-            on_moedas_alteradas=self._ao_alterar_moedas, 
-            price_manager=self.price_manager
+            self.notebook,
+            on_moedas_alteradas=self._ao_alterar_moedas,
+            price_manager=self.price_manager,
         )
 
         self.aba_estrategia = JanelaEstrategia(self.notebook)
@@ -302,7 +304,7 @@ class PortfolioDCA:
     def _iniciar_atualizacoes_automaticas(self) -> None:
         self._countdown_ativo = True
         self._countdown = CONFIG["intervalo_atualizacao"]
-        self._after_id = None  
+        self._after_id = None
         self._tick_countdown()
 
     def _tick_countdown(self):
@@ -354,7 +356,7 @@ class PortfolioDCA:
         self.aba_registro.atualizar_lista_moedas(novas_moedas)
         self._atualizar_status("🪙 Novas moedas salvas! Buscando preços...", CYAN)
         self.atualizar_todas_as_analises()
-            
+
     def _atualizar_status(self, mensagem: str, cor: str = TEXT_SECONDARY) -> None:
         def _update():
             self.aba_distribuicao.set_status(mensagem, cor)
@@ -368,10 +370,11 @@ class PortfolioDCA:
         self._stop_updates = True
         self.janela.destroy()
 
+
 if __name__ == "__main__":
     root_principal = ThemedTk(theme="arc")
     root_principal.withdraw()
-    
+
     splash = InicializadorSplash(root_principal)
-    
+
     root_principal.mainloop()
