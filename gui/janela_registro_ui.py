@@ -16,6 +16,9 @@ FONT_MONO_SMALL = ("Consolas", 9)
 FONT_MONO_BTN   = ("Consolas", 12, "bold")
 FONT_MONO_BADGE = ("Consolas", 9, "bold")
 
+WRAP_W = 210
+WRAP_H = 34
+
 
 class JanelaRegistroUI(ttk.Frame):
 
@@ -137,7 +140,7 @@ class JanelaRegistroUI(ttk.Frame):
 
     def _build_form(self, parent: tk.Frame) -> None:
         parent.columnconfigure(0, minsize=140)
-        parent.columnconfigure(1, minsize=220)
+        parent.columnconfigure(1, minsize=WRAP_W + 2)
         parent.columnconfigure(2, minsize=180)
 
         def section_bar(row, text):
@@ -151,8 +154,10 @@ class JanelaRegistroUI(ttk.Frame):
                 row=row, column=0, sticky="e", pady=8, padx=(0, 14))
 
         def wrap(row, col):
-            f = tk.Frame(parent, bg=BORDER, padx=1, pady=1)
+            f = tk.Frame(parent, bg=BORDER, width=WRAP_W + 2, height=WRAP_H + 2)
             f.grid(row=row, column=col, sticky="w", pady=8)
+            f.grid_propagate(False)
+            f.pack_propagate(False)
             return f
 
         section_bar(0, "  ATIVO")
@@ -160,8 +165,8 @@ class JanelaRegistroUI(ttk.Frame):
         field_label(1, "MOEDA")
         self._combo_moeda = ttk.Combobox(wrap(1, 1), values=self._moedas,
                                          font=FONT_MONO_INPUT, state="readonly",
-                                         width=22, style="Reg.TCombobox")
-        self._combo_moeda.pack()
+                                         style="Reg.TCombobox")
+        self._combo_moeda.pack(fill="both", expand=True)
         self._combo_moeda.bind("<<ComboboxSelected>>", self._on_moeda_changed)
 
         self._label_preco_atual = tk.Label(parent, text="", font=FONT_MONO_BADGE,
@@ -172,9 +177,8 @@ class JanelaRegistroUI(ttk.Frame):
 
         field_label(3, "TIPO")
         self._combo_tipo = ttk.Combobox(wrap(3, 1), font=FONT_MONO_INPUT,
-                                        state="disabled", width=24,
-                                        style="Reg.TCombobox")
-        self._combo_tipo.pack()
+                                        state="disabled", style="Reg.TCombobox")
+        self._combo_tipo.pack(fill="both", expand=True)
         self._combo_tipo.bind("<<ComboboxSelected>>", self._on_tipo_changed)
 
         self._label_saldo = tk.Label(parent, text="", font=FONT_MONO_BADGE,
@@ -189,14 +193,14 @@ class JanelaRegistroUI(ttk.Frame):
         self._label_preco_titulo.grid(row=5, column=0, sticky="e", pady=8, padx=(0, 14))
 
         self._entry_preco = ttk.Entry(wrap(5, 1), font=FONT_MONO_INPUT,
-                                      width=24, state="disabled", style="Reg.TEntry")
-        self._entry_preco.pack()
+                                      state="disabled", style="Reg.TEntry")
+        self._entry_preco.pack(fill="both", expand=True)
         self._entry_preco.bind("<KeyRelease>", self._on_calcular)
 
         field_label(6, "VALOR (USDT)")
         self._entry_valor = ttk.Entry(wrap(6, 1), font=FONT_MONO_INPUT,
-                                      width=24, state="disabled", style="Reg.TEntry")
-        self._entry_valor.pack()
+                                      state="disabled", style="Reg.TEntry")
+        self._entry_valor.pack(fill="both", expand=True)
         self._entry_valor.bind("<KeyRelease>", self._on_calcular)
 
         self._label_quantidade = tk.Label(parent, text="", font=FONT_MONO_BADGE,
