@@ -3,12 +3,12 @@
         "BTC",
         "ETH",
         "SOL",
+        "XRP",
         "LINK",
         "BNB",
         "UNI",
         "NEAR",
         "SUI",
-        "USDC",
         "USDT"
     ],
     "exchange": "binance",
