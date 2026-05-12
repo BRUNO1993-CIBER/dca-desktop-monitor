@@ -1,8 +1,10 @@
+import platform
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Optional, Callable
 from datetime import datetime
 import threading
+import customtkinter as ctk
 
 from config.donut_chart import DonutChart
 from config.tema_cripto import (
@@ -10,16 +12,27 @@ from config.tema_cripto import (
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, BORDER, tag_cores_treeview,
 )
 
+_FONT = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+
+_F_STATUS     = (_FONT, 10)
+_F_BADGE      = (_FONT, 10, "bold")
+_F_SECAO      = (_FONT, 11, "bold")
+_F_CARD_TITLE = (_FONT, 10, "bold")
+_F_CARD_SUB   = (_FONT, 9)
+_F_CARD_VAL   = (_FONT, 14, "bold")
+_F_TREE       = (_FONT, 10)
+_F_TREE_HEAD  = (_FONT, 10, "bold")
+
 _CORES_ATIVOS   = ["#f7931a", "#58a6ff", "#00ff88", "#e3b341", "#a371f7", "#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ff9ff3"]
 _DIVERSIFICACAO = [(7, "🟢 Excelente", NEON_GREEN), (4, "🟡 Moderada", YELLOW), (2, "🟠 Baixa", BTC_ORANGE), (0, "🔴 Mínima", NEON_RED)]
 
 
-class JanelaDistribuicao(ttk.Frame):
+class JanelaDistribuicao(ctk.CTkFrame):
     def __init__(self, parent, data_manager, price_manager, analysis_engine, on_change: Optional[Callable] = None):
-        super().__init__(parent)
-        self._data_manager   = data_manager
-        self._price_manager  = price_manager
-        self._engine         = analysis_engine
+        super().__init__(parent, fg_color="transparent")
+        self._data_manager  = data_manager
+        self._price_manager = price_manager
+        self._engine        = analysis_engine
 
         self._usdt_pl_brl     = {}
         self.display_currency = "USD"
@@ -30,40 +43,65 @@ class JanelaDistribuicao(ttk.Frame):
     def _build_ui(self):
         self.pack(fill="both", expand=True, padx=10, pady=10)
 
-        toolbar = ttk.Frame(self)
+        toolbar = ctk.CTkFrame(self, fg_color="transparent")
         toolbar.pack(fill="x", pady=(10, 10))
 
-        ttk.Checkbutton(toolbar, text="Exibir em BRL", variable=self.brl_toggle_var, command=self.toggle_currency).pack(side=tk.LEFT, padx=5)
+        ctk.CTkCheckBox(
+            toolbar,
+            text="Exibir em BRL",
+            variable=self.brl_toggle_var,
+            command=self.toggle_currency,
+            fg_color=BTC_ORANGE,
+            hover_color="#e8820f",
+            border_color=BORDER,
+            text_color=TEXT_PRIMARY,
+            checkmark_color=BG_DEEP,
+            font=_F_BADGE,
+        ).pack(side=tk.LEFT, padx=5)
 
-        sync_frame = ttk.Frame(toolbar)
+        sync_frame = ctk.CTkFrame(toolbar, fg_color="transparent")
         sync_frame.pack(side=tk.RIGHT, padx=(0, 5))
 
-        badge_frame = tk.Frame(sync_frame, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1, padx=8, pady=2)
+        badge_frame = ctk.CTkFrame(sync_frame, fg_color=BG_CARD,
+                                   border_color=BORDER, border_width=1, corner_radius=6)
         badge_frame.pack(side=tk.LEFT, padx=(0, 10))
-        tk.Label(badge_frame, text="🟢", font=("Segoe UI", 9), bg=BG_CARD, fg=NEON_GREEN).pack(side=tk.LEFT, padx=(0, 4))
-        tk.Label(badge_frame, text="Sincronizado c/ Binance", font=("Segoe UI", 9, "bold"), bg=BG_CARD, fg=TEXT_PRIMARY).pack(side=tk.LEFT)
+        ctk.CTkLabel(badge_frame, text="🟢",
+                     font=_F_BADGE, text_color=NEON_GREEN,
+                     fg_color="transparent").pack(side=tk.LEFT, padx=(8, 4), pady=2)
+        ctk.CTkLabel(badge_frame, text="Sincronizado c/ Binance",
+                     font=_F_BADGE, text_color=TEXT_PRIMARY,
+                     fg_color="transparent").pack(side=tk.LEFT, padx=(0, 8), pady=2)
 
-        self.lbl_status = ttk.Label(sync_frame, text="", font=("Segoe UI", 9), foreground=CYAN)
+        self.lbl_status = ctk.CTkLabel(sync_frame, text="",
+                                       font=_F_STATUS, text_color=CYAN,
+                                       fg_color="transparent", width=180, anchor="w")
         self.lbl_status.pack(side=tk.LEFT, padx=(0, 8))
 
-        self.lbl_ultima_atualizacao = ttk.Label(sync_frame, text="", font=("Segoe UI", 9), foreground=TEXT_SECONDARY)
+        self.lbl_ultima_atualizacao = ctk.CTkLabel(sync_frame, text="",
+                                                   font=_F_STATUS, text_color=TEXT_SECONDARY,
+                                                   fg_color="transparent", width=210, anchor="w")
         self.lbl_ultima_atualizacao.pack(side=tk.LEFT)
 
-        self.lbl_countdown = ttk.Label(sync_frame, text="", font=("Segoe UI", 9), foreground=TEXT_SECONDARY)
+        self.lbl_countdown = ctk.CTkLabel(sync_frame, text="",
+                                          font=_F_STATUS, text_color=TEXT_SECONDARY,
+                                          fg_color="transparent", width=120, anchor="w")
         self.lbl_countdown.pack(side=tk.LEFT, padx=(4, 0))
 
-        cards_outer = ttk.Frame(self)
+        cards_outer = ctk.CTkFrame(self, fg_color="transparent")
         cards_outer.pack(fill="x", pady=(0, 6))
-
         for col in range(5):
             cards_outer.columnconfigure(col, weight=1)
 
         def _card(row, col, titulo, subtitulo, cor):
-            frame = tk.Frame(cards_outer, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
+            frame = ctk.CTkFrame(cards_outer, fg_color=BG_CARD,
+                                 border_color=BORDER, border_width=1, corner_radius=8)
             frame.grid(row=row, column=col, sticky="nsew", padx=5, pady=2)
-            tk.Label(frame, text=titulo,    font=("Segoe UI", 9, "bold"), bg=BG_CARD, fg=TEXT_SECONDARY).pack(fill="x", pady=(8, 0))
-            tk.Label(frame, text=subtitulo, font=("Segoe UI", 7),         bg=BG_CARD, fg=TEXT_MUTED).pack(fill="x")
-            lbl = tk.Label(frame, text="--", font=("Segoe UI", 13, "bold"), bg=BG_CARD, fg=cor)
+            ctk.CTkLabel(frame, text=titulo, font=_F_CARD_TITLE,
+                         text_color=TEXT_SECONDARY, fg_color="transparent").pack(fill="x", pady=(8, 0))
+            ctk.CTkLabel(frame, text=subtitulo, font=_F_CARD_SUB,
+                         text_color=TEXT_MUTED, fg_color="transparent").pack(fill="x")
+            lbl = ctk.CTkLabel(frame, text="--", font=_F_CARD_VAL,
+                               text_color=cor, fg_color="transparent")
             lbl.pack(fill="x", pady=(2, 8))
             return lbl
 
@@ -79,39 +117,52 @@ class JanelaDistribuicao(ttk.Frame):
         self._lbl_melhor     = _card(1, 3, "🏆 Melhor Ativo",      "maior P/L total",             NEON_GREEN)
         self._lbl_pior       = _card(1, 4, "💀 Pior Ativo",        "menor P/L total",             NEON_RED)
 
-        main_body = ttk.Frame(self)
+        main_body = ctk.CTkFrame(self, fg_color="transparent")
         main_body.pack(fill="both", expand=True)
         main_body.columnconfigure(0, weight=1)
         main_body.rowconfigure(0, weight=2)
         main_body.rowconfigure(1, weight=3)
 
-        donut_frame = ttk.LabelFrame(main_body, text=" Gráfico de Distribuição e Alocação ", padding=10)
-        donut_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
+        def _secao(parent, titulo):
+            outer = ctk.CTkFrame(parent, fg_color=BG_CARD,
+                                 border_color=BORDER, border_width=1, corner_radius=8)
+            ctk.CTkLabel(outer, text=titulo, font=_F_SECAO,
+                         text_color=TEXT_SECONDARY, fg_color="transparent").pack(anchor="w", padx=12, pady=(8, 2))
+            inner = ctk.CTkFrame(outer, fg_color="transparent")
+            inner.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+            return outer, inner
 
-        self.donut_chart = DonutChart(donut_frame)
+        donut_outer, donut_inner = _secao(main_body, " Gráfico de Distribuição e Alocação ")
+        donut_outer.grid(row=0, column=0, sticky="nsew", padx=5, pady=(0, 10))
+        self.donut_chart = DonutChart(donut_inner)
         self.donut_chart.pack(fill="both", expand=True)
 
-        detalhe_frame = ttk.LabelFrame(main_body, text=" Análise Detalhada de P&L ", padding=10)
-        detalhe_frame.grid(row=1, column=0, sticky="nsew")
+        detalhe_outer, detalhe_inner = _secao(main_body, " Análise Detalhada de P&L ")
+        detalhe_outer.grid(row=1, column=0, sticky="nsew", padx=5)
 
         cols_det = ("Ativo", "Posição", "Preço Médio", "Preço Mercado", "Custo Posição",
                     "Valor Atual", "P/L N. Realizado", "P/L Realizado", "P/L Total", "Ganho %")
-        self._det_tree = ttk.Treeview(detalhe_frame, columns=cols_det, show="headings", selectmode="browse")
+        self._det_tree = ttk.Treeview(detalhe_inner, columns=cols_det,
+                                      show="headings", selectmode="browse")
 
         for col in cols_det:
             self._det_tree.heading(col, text=col)
             self._det_tree.column(col, anchor="center", width=110)
 
         tag_cores_treeview(self._det_tree)
-        self._det_tree.tag_configure("lucro",        foreground=NEON_GREEN, background=BG_CARD,   font=("Segoe UI", 10, "bold"))
-        self._det_tree.tag_configure("prejuizo",     foreground=NEON_RED,   background=BG_CARD,   font=("Segoe UI", 10, "bold"))
-        self._det_tree.tag_configure("lucro_alt",    foreground=NEON_GREEN, background="#12171e", font=("Segoe UI", 10, "bold"))
-        self._det_tree.tag_configure("prejuizo_alt", foreground=NEON_RED,   background="#12171e", font=("Segoe UI", 10, "bold"))
+        self._det_tree.tag_configure("lucro",        foreground=NEON_GREEN, background=BG_CARD,   font=_F_TREE)
+        self._det_tree.tag_configure("prejuizo",     foreground=NEON_RED,   background=BG_CARD,   font=_F_TREE)
+        self._det_tree.tag_configure("lucro_alt",    foreground=NEON_GREEN, background="#12171e", font=_F_TREE)
+        self._det_tree.tag_configure("prejuizo_alt", foreground=NEON_RED,   background="#12171e", font=_F_TREE)
 
         style = ttk.Style()
-        style.map("Treeview", background=[('selected', '#2c5d8f')], foreground=[('selected', 'white')])
+        style.configure("Treeview",         font=_F_TREE,      rowheight=28)
+        style.configure("Treeview.Heading", font=_F_TREE_HEAD)
+        style.map("Treeview",
+                  background=[("selected", "#2c5d8f")],
+                  foreground=[("selected", "white")])
 
-        sb_det = ttk.Scrollbar(detalhe_frame, orient="vertical", command=self._det_tree.yview)
+        sb_det = ttk.Scrollbar(detalhe_inner, orient="vertical", command=self._det_tree.yview)
         self._det_tree.configure(yscrollcommand=sb_det.set)
         sb_det.pack(side=tk.RIGHT, fill="y")
         self._det_tree.pack(fill="both", expand=True)
@@ -134,7 +185,7 @@ class JanelaDistribuicao(ttk.Frame):
         for lbl in (self._lbl_patrimonio, self._lbl_custo, self._lbl_pl_nr,
                     self._lbl_pl_r, self._lbl_pl, self._lbl_pct, self._lbl_retorno,
                     self._lbl_div, self._lbl_melhor, self._lbl_pior):
-            lbl.config(text="--")
+            lbl.configure(text="--")
 
     def toggle_currency(self):
         self.display_currency = "BRL" if self.brl_toggle_var.get() else "USD"
@@ -173,7 +224,8 @@ class JanelaDistribuicao(ttk.Frame):
             self._det_tree.delete(row)
 
         agora = datetime.now().strftime("%H:%M:%S")
-        self.lbl_ultima_atualizacao.config(text=f"Última atualização: {agora}", foreground=TEXT_SECONDARY)
+        self.lbl_ultima_atualizacao.configure(text=f"Última atualização: {agora}",
+                                              text_color=TEXT_SECONDARY)
         self.set_status("", TEXT_SECONDARY)
         self._resetar_cards()
         self._det_tree.insert("", "end", values=("Nenhuma operação registrada.", *[""] * 9))
@@ -184,7 +236,8 @@ class JanelaDistribuicao(ttk.Frame):
             self._det_tree.delete(row)
 
         agora = datetime.now().strftime("%H:%M:%S")
-        self.lbl_ultima_atualizacao.config(text=f"Última atualização: {agora}", foreground=TEXT_SECONDARY)
+        self.lbl_ultima_atualizacao.configure(text=f"Última atualização: {agora}",
+                                              text_color=TEXT_SECONDARY)
         self.set_status("✅ Cálculo concluído", NEON_GREEN)
         self.after(2000, lambda: self.set_status("", TEXT_SECONDARY))
 
@@ -192,19 +245,20 @@ class JanelaDistribuicao(ttk.Frame):
 
         distribuicao = dist.get("distribuicao", {})
         if distribuicao:
-            n_ativos = len(distribuicao)
+            n_ativos         = len(distribuicao)
             lbl_txt, cor_txt = next((lb, c) for minv, lb, c in _DIVERSIFICACAO if n_ativos >= minv)
-            self._lbl_div.config(text=lbl_txt, fg=cor_txt)
+            self._lbl_div.configure(text=lbl_txt, text_color=cor_txt)
 
             ord_dist = sorted(distribuicao.items(), key=lambda x: x[1]["percentual"], reverse=True)
             cor_map  = {m: _CORES_ATIVOS[i % len(_CORES_ATIVOS)] for i, (m, _) in enumerate(ord_dist)}
             self.donut_chart.atualizar_dados(ord_dist, cor_map)
         else:
-            self._lbl_div.config(text="--", fg=TEXT_SECONDARY)
+            self._lbl_div.configure(text="--", text_color=TEXT_SECONDARY)
             self.donut_chart.limpar()
 
         moedas_dados = {m: d for m, d in portfolio.items() if m != "totais"}
-        ord_port     = sorted(moedas_dados.items(), key=lambda item: item[1].get("valor_atual_posicao", 0), reverse=True)
+        ord_port     = sorted(moedas_dados.items(),
+                              key=lambda item: item[1].get("valor_atual_posicao", 0), reverse=True)
 
         tot_custo = tot_val = tot_pl_nr = tot_pl_r = 0
 
@@ -215,21 +269,21 @@ class JanelaDistribuicao(ttk.Frame):
             tot_pl_nr += dados.get("lucro_nao_realizado", 0)
             tot_pl_r  += dados.get("lucro_realizado", 0)
 
-        tot_pl      = tot_pl_nr + tot_pl_r
-        pct_nr      = (tot_pl_nr / tot_custo * 100) if tot_custo > 0.000001 else 0
-        pct_total   = (tot_pl    / tot_custo * 100) if tot_custo > 0.000001 else 0
+        tot_pl    = tot_pl_nr + tot_pl_r
+        pct_nr    = (tot_pl_nr / tot_custo * 100) if tot_custo > 0.000001 else 0
+        pct_total = (tot_pl    / tot_custo * 100) if tot_custo > 0.000001 else 0
         cor_pl      = NEON_GREEN if tot_pl    >= 0 else NEON_RED
         cor_nr      = NEON_GREEN if tot_pl_nr >= 0 else NEON_RED
         cor_r       = NEON_GREEN if tot_pl_r  >= 0 else NEON_RED
         cor_retorno = NEON_GREEN if pct_total >= 0 else NEON_RED
 
-        self._lbl_patrimonio.config(text=self._fmt_val(tot_val))
-        self._lbl_custo.config(text=self._fmt_val(tot_custo))
-        self._lbl_pl_nr.config(text=self._fmt_val(tot_pl_nr), fg=cor_nr)
-        self._lbl_pl_r.config(text=self._fmt_val(tot_pl_r),   fg=cor_r)
-        self._lbl_pl.config(text=self._fmt_val(tot_pl),       fg=cor_pl)
-        self._lbl_pct.config(text=f"{pct_nr:+.2f}%",          fg=cor_nr)
-        self._lbl_retorno.config(text=f"{pct_total:+.2f}%",   fg=cor_retorno)
+        self._lbl_patrimonio.configure(text=self._fmt_val(tot_val))
+        self._lbl_custo.configure(text=self._fmt_val(tot_custo))
+        self._lbl_pl_nr.configure(text=self._fmt_val(tot_pl_nr),  text_color=cor_nr)
+        self._lbl_pl_r.configure(text=self._fmt_val(tot_pl_r),    text_color=cor_r)
+        self._lbl_pl.configure(text=self._fmt_val(tot_pl),        text_color=cor_pl)
+        self._lbl_pct.configure(text=f"{pct_nr:+.2f}%",           text_color=cor_nr)
+        self._lbl_retorno.configure(text=f"{pct_total:+.2f}%",    text_color=cor_retorno)
 
         moedas_validas = [
             (m, d) for m, d in ord_port
@@ -249,11 +303,11 @@ class JanelaDistribuicao(ttk.Frame):
             p_pl  = pior[1].get("lucro_total", 0)
             p_pct = _pct_ativo(pior[1])
 
-            self._lbl_melhor.config(text=f"{melhor[0]}  {self._fmt_val(m_pl)}  ({m_pct:+.1f}%)")
-            self._lbl_pior.config(text=f"{pior[0]}  {self._fmt_val(p_pl)}  ({p_pct:+.1f}%)")
+            self._lbl_melhor.configure(text=f"{melhor[0]}  {self._fmt_val(m_pl)}  ({m_pct:+.1f}%)")
+            self._lbl_pior.configure(text=f"{pior[0]}  {self._fmt_val(p_pl)}  ({p_pct:+.1f}%)")
         else:
-            self._lbl_melhor.config(text="--")
-            self._lbl_pior.config(text="--")
+            self._lbl_melhor.configure(text="--")
+            self._lbl_pior.configure(text="--")
 
     def _inserir_detalhe(self, moeda, dados, idx):
         qtd     = dados.get("quantidade_final", 0)
@@ -287,7 +341,8 @@ class JanelaDistribuicao(ttk.Frame):
                     pmc_f = custo_f = pl_nr_f = pl_r_f = pl_tot_f = "N/A"
                     pct_f, pos = "0.00%", True
 
-                valores = (moeda, f"{qtd:,.2f} USDT", pmc_f, p_mkt_f, custo_f, v_at_f, pl_nr_f, pl_r_f, pl_tot_f, pct_f)
+                valores = (moeda, f"{qtd:,.2f} USDT", pmc_f, p_mkt_f, custo_f,
+                           v_at_f, pl_nr_f, pl_r_f, pl_tot_f, pct_f)
             else:
                 valores = (moeda, f"{qtd:,.2f} USDT", "N/A", self._fmt_prc(1.0), "N/A",
                            self._fmt_val(v_atual), "N/A", "N/A", "N/A", "0.00%")
@@ -306,7 +361,7 @@ class JanelaDistribuicao(ttk.Frame):
         self._det_tree.insert("", "end", values=valores, tags=(tag,))
 
     def set_countdown(self, segundos: int) -> None:
-        self.lbl_countdown.config(text=f"| próxima em {segundos}s" if segundos > 0 else "")
+        self.lbl_countdown.configure(text=f"próxima atualização em {segundos}s" if segundos > 0 else "")
 
     def set_status(self, mensagem: str, cor: str = TEXT_SECONDARY) -> None:
-        self.lbl_status.config(text=mensagem, foreground=cor)
+        self.lbl_status.configure(text=mensagem, text_color=cor)
