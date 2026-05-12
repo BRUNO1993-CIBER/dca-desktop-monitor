@@ -11,6 +11,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 try:
+    # pyrefly: ignore [missing-import]
     import ccxt
     CCXT_AVAILABLE = True
 except ImportError:
