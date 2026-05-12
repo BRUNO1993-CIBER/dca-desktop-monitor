@@ -24,6 +24,7 @@ TEXT_MUTED     = "#484f58"
 
 
 def aplicar_tema(janela: tk.Misc) -> ttk.Style:
+    # pyrefly: ignore [unexpected-keyword]
     janela.configure(bg=BG_DEEP)
 
     style = ttk.Style(janela)
