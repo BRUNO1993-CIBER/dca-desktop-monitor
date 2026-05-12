@@ -71,6 +71,17 @@ class PortfolioDCA:
 
         aplicar_tema(self.janela)
 
+        tk.Frame(self.janela, bg=BTC_ORANGE, height=1).pack(side=tk.BOTTOM, fill=tk.X)
+
+        status_frame = tk.Frame(self.janela, bg=BG_CARD, pady=4)
+        status_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        tk.Label(
+            status_frame, text="Dev by Bruno Machado",
+            bg=BG_CARD, fg=TEXT_SECONDARY,
+            font=("Segoe UI", 9, "italic"), padx=10,
+        ).pack(side=tk.RIGHT)
+
         self.notebook = ttk.Notebook(self.janela)
         self.notebook.pack(fill="both", expand=True, padx=15, pady=15)
 
@@ -94,23 +105,11 @@ class PortfolioDCA:
         self.notebook.add(self.aba_moedas,       text="🪙  Gerenciar Moedas")
         self.notebook.add(self.aba_estrategia,   text="🧠  Tese Institucional")
 
-        status_frame = tk.Frame(self.janela, bg=BG_CARD, pady=4)
-        status_frame.pack(side=tk.BOTTOM, fill=tk.X)
-
-        tk.Frame(self.janela, bg=BTC_ORANGE, height=1).pack(
-            side=tk.BOTTOM, fill=tk.X, before=status_frame
-        )
-
-        tk.Label(
-            status_frame, text="Dev by Bruno Machado",
-            bg=BG_CARD, fg=TEXT_SECONDARY,
-            font=("Segoe UI", 9, "italic"), padx=10,
-        ).pack(side=tk.RIGHT)
-
         try:
             self.janela.state("zoomed")
         except Exception:
             self.janela.attributes("-zoomed", True)
+
 
     def _preencher_dados_iniciais(self):
         self.aba_caixa.atualizar()
