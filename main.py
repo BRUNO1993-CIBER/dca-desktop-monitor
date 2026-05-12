@@ -1,13 +1,10 @@
 import threading
-import time
 import logging
 import os
 import platform
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 from ttkthemes import ThemedTk
-from concurrent.futures import ThreadPoolExecutor
-import json
 
 if platform.system() == "Windows":
     try:
@@ -16,7 +13,8 @@ if platform.system() == "Windows":
     except Exception:
         pass
 
-from backend.backend import DataManager, PriceManager, AnalysisEngine, CCXT_AVAILABLE
+from backend.backend import AnalysisEngine, CCXT_AVAILABLE
+from gui.janela_splash import JanelaSplash
 from gui.janela_edicao import JanelaEdicao
 from gui.janela_distribuicao import JanelaDistribuicao
 from gui.janela_registro_logica import JanelaRegistro
@@ -26,7 +24,7 @@ from gui.janela_estrategia import JanelaEstrategia
 
 from config.tema_cripto import (
     aplicar_tema,
-    BG_DEEP, BG_CARD, BG_INPUT,
+    BG_CARD,
     BTC_ORANGE, NEON_GREEN, CYAN,
     TEXT_SECONDARY,
 )
@@ -38,188 +36,6 @@ logger = logging.getLogger(__name__)
 
 CONFIG = _carregar_config()
 MOEDAS_SUPORTADAS = CONFIG["moedas"]
-
-
-class InicializadorSplash:
-    def __init__(self, parent):
-        self.parent = parent
-        self.splash = tk.Toplevel(parent)
-        self.splash.title("Portfolio CRIPTO")
-        self.splash.resizable(False, False)
-        self.splash.withdraw()
-        self.splash.configure(bg=BG_DEEP)
-
-        self.sucesso = False
-        self.data_manager = None
-        self.price_manager = None
-        self._start_time = time.time()
-        self._status_msg = "Iniciando sistema..."
-        self._carregando = False
-
-        self._construir_interface()
-        self._maximizar_e_mostrar()
-
-        self._executor = ThreadPoolExecutor(max_workers=1)
-        self._future = self._executor.submit(self._carregar_dados)
-        self.splash.after(100, self._checar_thread)
-
-    def _maximizar_e_mostrar(self):
-        self.splash.update_idletasks()
-        try:
-            self.splash.state("zoomed")
-        except Exception:
-            self.splash.attributes("-zoomed", True)
-
-        self.splash.deiconify()
-
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        caminho_ico = os.path.join(base_dir, "img", "favicon.ico")
-        caminho_png = os.path.join(base_dir, "img", "favicon.png")
-
-        try:
-            if platform.system() == "Windows" and os.path.exists(caminho_ico):
-                self.splash.iconbitmap(caminho_ico)
-            if os.path.exists(caminho_png):
-                icone_img = tk.PhotoImage(file=caminho_png)
-                self.splash.iconphoto(True, icone_img)
-        except Exception:
-            pass
-
-    def _construir_interface(self):
-        self.splash.configure(bg=BG_DEEP)
-
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-
-        caminho_bg = os.path.join(base_dir, "img", "912512.png")
-        try:
-            if os.path.exists(caminho_bg):
-                self.bg_image = tk.PhotoImage(file=caminho_bg)
-                bg_label = tk.Label(self.splash, image=self.bg_image)
-                bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-        except Exception as e:
-            logger.warning(f"{e}")
-
-        container = tk.Frame(
-            self.splash,
-            bg=BG_CARD,
-            highlightbackground=BTC_ORANGE,
-            highlightthickness=2,
-            padx=48,
-            pady=36,
-        )
-        container.place(relx=0.5, rely=0.5, anchor="center")
-
-        caminho_png = os.path.join(base_dir, "img", "favicon.png")
-        try:
-            if os.path.exists(caminho_png):
-                self._icone = tk.PhotoImage(file=caminho_png).subsample(2, 2)
-                tk.Label(container, image=self._icone, bg=BG_CARD).pack(pady=(0, 12))
-        except Exception:
-            pass
-
-        tk.Label(
-            container, text="Portfolio CRIPTO",
-            font=("Segoe UI", 22, "bold"),
-            bg=BG_CARD, fg=BTC_ORANGE,
-        ).pack()
-
-        tk.Label(
-            container, text="Carregando dados necessários...",
-            font=("Segoe UI", 10, "italic"),
-            bg=BG_CARD, fg=TEXT_SECONDARY,
-        ).pack(pady=(4, 18))
-
-        self.lbl_status = tk.Label(
-            container, text="Iniciando...",
-            font=("Segoe UI", 11, "bold"),
-            bg=BG_CARD, fg=CYAN,
-        )
-        self.lbl_status.pack(pady=(8, 6))
-
-        style = ttk.Style()
-        style.theme_use("default")
-        style.configure(
-            "Splash.Horizontal.TProgressbar",
-            troughcolor=BG_INPUT,
-            background=BTC_ORANGE,
-            bordercolor=BG_CARD,
-            lightcolor=BTC_ORANGE,
-            darkcolor="#c96d0a",
-        )
-        self.progresso = ttk.Progressbar(
-            container, mode="indeterminate", length=360,
-            style="Splash.Horizontal.TProgressbar",
-        )
-        self.progresso.pack()
-        self.progresso.start(15)
-
-    def _carregar_dados(self):
-        try:
-            time.sleep(0.5)
-            self._status_msg = "Lendo banco de dados local..."
-            data_mgr = DataManager()
-
-            time.sleep(0.5)
-            self._status_msg = "Estabelecendo conexão com a Binance..."
-            price_mgr = PriceManager("binance")
-
-            self._status_msg = "Buscando cotações ao vivo. Aguarde..."
-            price_mgr.atualizar_precos(MOEDAS_SUPORTADAS)
-
-            self._status_msg = "Preparando a interface visual..."
-            time.sleep(0.5)
-            return data_mgr, price_mgr
-        except Exception as e:
-            logger.error(f"{e}")
-            raise
-
-    def _checar_thread(self):
-        self.lbl_status.config(text=self._status_msg)
-        if self._future.done():
-            try:
-                self.data_manager, self.price_manager = self._future.result()
-
-                self.lbl_status.config(text="Renderizando interface gráfica...")
-                self.splash.update()
-
-                self.parent.app = PortfolioDCA(
-                    janela=self.parent,
-                    data_manager=self.data_manager,
-                    price_manager=self.price_manager,
-                )
-
-                self.sucesso = True
-                self._fade_out()
-            except Exception as e:
-                messagebox.showerror("Erro", f"{e}")
-                self._encerrar()
-        elif time.time() - self._start_time > 20:
-            messagebox.showerror("Timeout", "Tempo limite de 20s excedido. ERRO!")
-            self._encerrar()
-        else:
-            self.splash.after(50, self._checar_thread)
-
-    def _fade_out(self):
-        alpha = self.splash.attributes("-alpha")
-        if alpha > 0:
-            self.splash.attributes("-alpha", max(0.0, alpha - 0.15))
-            self.splash.after(30, self._fade_out)
-        else:
-            self._encerrar()
-
-    def _encerrar(self):
-        try:
-            if self.progresso.winfo_exists():
-                self.progresso.stop()
-        except Exception:
-            pass
-
-        self.splash.destroy()
-
-        if self.sucesso:
-            self.parent.deiconify()
-        else:
-            self.parent.destroy()
 
 
 class PortfolioDCA:
@@ -375,6 +191,12 @@ if __name__ == "__main__":
     root_principal = ThemedTk(theme="arc")
     root_principal.withdraw()
 
-    splash = InicializadorSplash(root_principal)
+    def criar_app(data_mgr, price_mgr):
+        root_principal.app = PortfolioDCA(
+            janela=root_principal,
+            data_manager=data_mgr,
+            price_manager=price_mgr,
+        )
 
+    JanelaSplash(root_principal, criar_app_callback=criar_app)
     root_principal.mainloop()
