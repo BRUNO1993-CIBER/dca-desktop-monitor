@@ -147,7 +147,9 @@ class PortfolioDCA:
         def worker():
             try:
                 self._atualizar_status("⟳ Atualizando preços na Binance...", CYAN)
-                self.price_manager.atualizar_precos(MOEDAS_SUPORTADAS)
+                sucesso = self.price_manager.atualizar_precos(MOEDAS_SUPORTADAS)
+                if not sucesso:                          
+                    raise ConnectionError("Sem resposta da Binance")
                 self._atualizar_status("⚙ Calculando portfólio...", CYAN)
                 self.janela.after(0, self._atualizar_abas_seguro)
             except Exception:

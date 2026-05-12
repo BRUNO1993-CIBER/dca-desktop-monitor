@@ -12,6 +12,6 @@
         "USDT"
     ],
     "exchange": "binance",
-    "intervalo_atualizacao": 30,
+    "intervalo_atualizacao": 10,
     "splash_timeout": 30
 }

@@ -2,8 +2,8 @@ import platform
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Optional, Callable
-from datetime import datetime
 import threading
+# pyrefly: ignore [missing-import]
 import customtkinter as ctk
 
 from config.donut_chart import DonutChart
@@ -14,11 +14,11 @@ from config.tema_cripto import (
 
 _FONT = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
 
-_F_STATUS     = (_FONT, 10)
-_F_BADGE      = (_FONT, 10, "bold")
-_F_SECAO      = (_FONT, 11, "bold")
-_F_CARD_TITLE = (_FONT, 10, "bold")
-_F_CARD_SUB   = (_FONT, 9)
+_F_STATUS     = (_FONT, 11)
+_F_BADGE      = (_FONT, 11, "bold")
+_F_SECAO      = (_FONT, 12, "bold")
+_F_CARD_TITLE = (_FONT, 11, "bold")
+_F_CARD_SUB   = (_FONT, 10)
 _F_CARD_VAL   = (_FONT, 14, "bold")
 _F_TREE       = (_FONT, 10)
 _F_TREE_HEAD  = (_FONT, 10, "bold")
@@ -37,6 +37,9 @@ class JanelaDistribuicao(ctk.CTkFrame):
         self._usdt_pl_brl     = {}
         self.display_currency = "USD"
         self.brl_toggle_var   = tk.BooleanVar(value=False)
+
+        self._estado_conexao = "offline"
+        self._countdown_seg  = 0
 
         self._build_ui()
 
@@ -59,33 +62,19 @@ class JanelaDistribuicao(ctk.CTkFrame):
             font=_F_BADGE,
         ).pack(side=tk.LEFT, padx=5)
 
-        sync_frame = ctk.CTkFrame(toolbar, fg_color="transparent")
-        sync_frame.pack(side=tk.RIGHT, padx=(0, 5))
+        self.badge_conexao = ctk.CTkFrame(toolbar, fg_color=BG_CARD,
+                                        border_color=BORDER, border_width=1, corner_radius=6)
+        self.badge_conexao.pack(side=tk.RIGHT, padx=(0, 5))
 
-        badge_frame = ctk.CTkFrame(sync_frame, fg_color=BG_CARD,
-                                   border_color=BORDER, border_width=1, corner_radius=6)
-        badge_frame.pack(side=tk.LEFT, padx=(0, 10))
-        ctk.CTkLabel(badge_frame, text="🟢",
-                     font=_F_BADGE, text_color=NEON_GREEN,
-                     fg_color="transparent").pack(side=tk.LEFT, padx=(8, 4), pady=2)
-        ctk.CTkLabel(badge_frame, text="Sincronizado c/ Binance",
-                     font=_F_BADGE, text_color=TEXT_PRIMARY,
-                     fg_color="transparent").pack(side=tk.LEFT, padx=(0, 8), pady=2)
+        self.lbl_badge_icon = ctk.CTkLabel(self.badge_conexao, text="🟢",
+                                        font=_F_BADGE, text_color=NEON_GREEN,
+                                        fg_color="transparent")
+        self.lbl_badge_icon.pack(side=tk.LEFT, padx=(10, 6), pady=4)
 
-        self.lbl_status = ctk.CTkLabel(sync_frame, text="",
-                                       font=_F_STATUS, text_color=CYAN,
-                                       fg_color="transparent", width=180, anchor="w")
-        self.lbl_status.pack(side=tk.LEFT, padx=(0, 8))
-
-        self.lbl_ultima_atualizacao = ctk.CTkLabel(sync_frame, text="",
-                                                   font=_F_STATUS, text_color=TEXT_SECONDARY,
-                                                   fg_color="transparent", width=210, anchor="w")
-        self.lbl_ultima_atualizacao.pack(side=tk.LEFT)
-
-        self.lbl_countdown = ctk.CTkLabel(sync_frame, text="",
-                                          font=_F_STATUS, text_color=TEXT_SECONDARY,
-                                          fg_color="transparent", width=120, anchor="w")
-        self.lbl_countdown.pack(side=tk.LEFT, padx=(4, 0))
+        self.lbl_badge_texto = ctk.CTkLabel(self.badge_conexao, text="Conectado",
+                                            font=_F_BADGE, text_color=TEXT_PRIMARY,
+                                            fg_color="transparent")
+        self.lbl_badge_texto.pack(side=tk.LEFT, padx=(0, 12), pady=4)
 
         cards_outer = ctk.CTkFrame(self, fg_color="transparent")
         cards_outer.pack(fill="x", pady=(0, 6))
@@ -223,9 +212,6 @@ class JanelaDistribuicao(ctk.CTkFrame):
         for row in self._det_tree.get_children():
             self._det_tree.delete(row)
 
-        agora = datetime.now().strftime("%H:%M:%S")
-        self.lbl_ultima_atualizacao.configure(text=f"Última atualização: {agora}",
-                                              text_color=TEXT_SECONDARY)
         self.set_status("", TEXT_SECONDARY)
         self._resetar_cards()
         self._det_tree.insert("", "end", values=("Nenhuma operação registrada.", *[""] * 9))
@@ -234,12 +220,6 @@ class JanelaDistribuicao(ctk.CTkFrame):
     def _atualizar_ui(self, portfolio, usdt_pl, dist):
         for row in self._det_tree.get_children():
             self._det_tree.delete(row)
-
-        agora = datetime.now().strftime("%H:%M:%S")
-        self.lbl_ultima_atualizacao.configure(text=f"Última atualização: {agora}",
-                                              text_color=TEXT_SECONDARY)
-        self.set_status("✅ Cálculo concluído", NEON_GREEN)
-        self.after(2000, lambda: self.set_status("", TEXT_SECONDARY))
 
         self._usdt_pl_brl = usdt_pl
 
@@ -360,8 +340,41 @@ class JanelaDistribuicao(ctk.CTkFrame):
 
         self._det_tree.insert("", "end", values=valores, tags=(tag,))
 
+    def _render_badge(self):
+        if self._estado_conexao == "conectado":
+            icon, cor = "🟢", NEON_GREEN
+            txt = "Conectado"
+            if self._countdown_seg > 0:
+                txt = f"Conectado · próx. atualização em {self._countdown_seg}s"
+        elif self._estado_conexao == "sincronizando":
+            icon, cor = "🟡", YELLOW
+            txt = "Sincronizando..."
+        elif self._estado_conexao == "offline":
+            icon, cor = "🔴", NEON_RED
+            txt = "Sem conexão"
+            if self._countdown_seg > 0:
+                txt = f"Sem conexão · tentando em {self._countdown_seg}s" 
+        else:
+            icon, cor = "⚪", TEXT_MUTED
+            txt = "—"
+        self.lbl_badge_icon.configure(text=icon, text_color=cor)
+        self.lbl_badge_texto.configure(text=txt)
+
+    def set_estado(self, estado: str) -> None:
+        """estado: 'conectado' | 'sincronizando' | 'offline'"""
+        self._estado_conexao = estado
+        self._render_badge()
+
     def set_countdown(self, segundos: int) -> None:
-        self.lbl_countdown.configure(text=f"próxima atualização em {segundos}s" if segundos > 0 else "")
+        self._countdown_seg = max(0, segundos)
+        self._render_badge() 
 
     def set_status(self, mensagem: str, cor: str = TEXT_SECONDARY) -> None:
-        self.lbl_status.configure(text=mensagem, text_color=cor)
+        if not mensagem:
+            return 
+        if cor in (NEON_RED, "#ff4d4d", "#e3b341"):
+            self.set_estado("offline")
+        elif cor == CYAN:
+            self.set_estado("sincronizando")
+        elif cor == NEON_GREEN:
+            self.set_estado("conectado")
