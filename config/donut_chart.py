@@ -1,5 +1,6 @@
 import tkinter as tk
 from typing import List, Dict, Optional
+# pyrefly: ignore [missing-import]
 import customtkinter as ctk
 
 from config.tema_cripto import (
@@ -73,21 +74,31 @@ class DonutChart(ctk.CTkFrame):
         self.canvas.bind("<Button-1>", self._on_canvas_click)
         self.canvas.bind("<Leave>", self._on_canvas_leave)
 
-
     def _build_tabela(self):
         header = ctk.CTkFrame(self.leg_frame, fg_color=BG_DEEP, corner_radius=6)
         header.pack(fill="x", padx=(0, 16), pady=(0, 2))
-        
+
         for i in range(3):
             header.columnconfigure(i, weight=1, uniform="leg_col")
 
-        for col, (txt, anchor) in enumerate(zip(("ATIVO", "%", "QUANTIDADE"), ("w", "w", "w"))):
-            pad_x_val = (16, 6) if col == 1 else 6 
+        labels = ("ATIVO", "%", "QUANTIDADE")
+
+        for col, txt in enumerate(labels):
+            if col == 1:
+                pad_x_val = (22, 6)   
+                sticky = "w"         
+            else:
+                pad_x_val = 6
+                sticky = "w"
+
             ctk.CTkLabel(
-                header, text=txt, font=_FONT_HEAD,
-                text_color=TEXT_SECONDARY, fg_color="transparent",
-                anchor=anchor,
-            ).grid(row=0, column=col, sticky="ew", padx=pad_x_val, pady=3)
+                header,
+                text=txt,
+                font=_FONT_HEAD,
+                text_color=TEXT_SECONDARY,
+                fg_color="transparent",
+                anchor="w",
+            ).grid(row=0, column=col, sticky=sticky, padx=pad_x_val, pady=3)
 
         self._scroll_frame = ctk.CTkScrollableFrame(
             self.leg_frame,
@@ -95,10 +106,10 @@ class DonutChart(ctk.CTkFrame):
             scrollbar_button_color=BORDER,
             scrollbar_button_hover_color=TEXT_MUTED,
             corner_radius=6,
-            width=280,
+            width=300
         )
-        self._scroll_frame.pack(fill="both", expand=True, padx=0)
-        
+        self._scroll_frame.pack(fill="both", expand=True, padx=(0, 16))
+
         self._bind_scroll(self._scroll_frame)
 
     def _bind_scroll(self, frame: ctk.CTkScrollableFrame):
