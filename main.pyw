@@ -2,9 +2,9 @@ import threading
 import logging
 import os
 import platform
-import tkinter as tk
-from tkinter import ttk
-from ttkthemes import ThemedTk
+
+# pyrefly: ignore [missing-import]
+import customtkinter as ctk
 
 if platform.system() == "Windows":
     try:
@@ -20,30 +20,38 @@ from gui.janela_distribuicao import JanelaDistribuicao
 from gui.janela_registro_logica import JanelaRegistro
 from gui.janela_caixa import JanelaCaixa
 from gui.janela_moedas import JanelaMoedas
-from gui.janela_estrategia import JanelaEstrategia
 
 from config.tema_cripto import (
     aplicar_tema,
-    BG_CARD,
+    BG_CARD, BG_SURFACE,
     BTC_ORANGE, NEON_GREEN, CYAN,
     TEXT_SECONDARY,
 )
-
 from config.carregar_json import _carregar_config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-CONFIG = _carregar_config()
+_FONT = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+
+CONFIG            = _carregar_config()
 MOEDAS_SUPORTADAS = CONFIG["moedas"]
+
+ABAS = [
+    ("📈  Dashboard Geral",      "aba_distribuicao"),
+    ("💰  Caixa (USDT)",         "aba_caixa"),
+    ("✏️  Registrar Operação",   "aba_registro"),
+    ("⚙️  Histórico e Edição",   "aba_edicao"),
+    ("🪙  Gerenciar Moedas",     "aba_moedas"),
+]
 
 
 class PortfolioDCA:
-    def __init__(self, janela, data_manager, price_manager):
-        self.data_manager = data_manager
-        self.price_manager = price_manager
+    def __init__(self, janela: ctk.CTk, data_manager, price_manager):
+        self.data_manager    = data_manager
+        self.price_manager   = price_manager
         self.analysis_engine = AnalysisEngine()
-        self._stop_updates = False
+        self._stop_updates   = False
 
         self.janela = janela
         self.janela.title("Portfolio CRIPTO — Dashboard Interativo")
@@ -53,10 +61,28 @@ class PortfolioDCA:
         self._preencher_dados_iniciais()
         self._iniciar_atualizacoes_automaticas()
 
+    def _aplicar_cursor_abas(self):
+        try:
+            _sb = self.tabview._segmented_button
+            _sb.configure(
+                text_color="#f0f4ff",
+                text_color_disabled=TEXT_SECONDARY,
+            )
+            for _btn in _sb._buttons_dict.values():
+                _btn.configure(cursor="hand2", text_color="#f0f4ff")
+                for child in _btn.winfo_children():
+                    try:
+                        child.configure(cursor="hand2")
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.warning("cursor abas: %s", e)
+
     def _criar_interface(self) -> None:
         self.janela.minsize(1100, 700)
+        ctk.set_appearance_mode("dark")
 
-        base_dir = os.path.dirname(os.path.abspath(__file__))
+        base_dir    = os.path.dirname(os.path.abspath(__file__))
         caminho_ico = os.path.join(base_dir, "img", "favicon.ico")
         caminho_png = os.path.join(base_dir, "img", "favicon.png")
 
@@ -64,6 +90,7 @@ class PortfolioDCA:
             if platform.system() == "Windows" and os.path.exists(caminho_ico):
                 self.janela.iconbitmap(caminho_ico)
             if os.path.exists(caminho_png):
+                import tkinter as tk
                 icone_img = tk.PhotoImage(file=caminho_png)
                 self.janela.iconphoto(True, icone_img)
         except Exception:
@@ -71,45 +98,80 @@ class PortfolioDCA:
 
         aplicar_tema(self.janela)
 
-        tk.Frame(self.janela, bg=BTC_ORANGE, height=1).pack(side=tk.BOTTOM, fill=tk.X)
+        ctk.CTkFrame(self.janela, fg_color=BTC_ORANGE, height=1, corner_radius=0).pack(
+            side="bottom", fill="x"
+        )
+        status_bar = ctk.CTkFrame(self.janela, fg_color=BG_CARD, height=28, corner_radius=0)
+        status_bar.pack(side="bottom", fill="x")
+        ctk.CTkLabel(
+            status_bar,
+            text="Dev by Bruno Machado",
+            font=ctk.CTkFont(_FONT, 9, "bold"),
+            text_color=TEXT_SECONDARY,
+        ).pack(side="right", padx=10)
 
-        status_frame = tk.Frame(self.janela, bg=BG_CARD, pady=4)
-        status_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        self.tabview = ctk.CTkTabview(
+            self.janela,
+            fg_color=BG_SURFACE,
+            segmented_button_fg_color=BG_CARD,
+            segmented_button_selected_color=BTC_ORANGE,
+            segmented_button_selected_hover_color=CYAN,
+            segmented_button_unselected_color=BG_CARD,
+            segmented_button_unselected_hover_color="#2a3550",
+            text_color=TEXT_SECONDARY,
+            text_color_disabled=TEXT_SECONDARY,
+            border_color=BTC_ORANGE,
+            border_width=1,
+        )
+        self.tabview.pack(fill="both", expand=True, padx=15, pady=15)
 
-        tk.Label(
-            status_frame, text="Dev by Bruno Machado",
-            bg=BG_CARD, fg=TEXT_SECONDARY,
-            font=("Segoe UI", 9, "italic"), padx=10,
-        ).pack(side=tk.RIGHT)
+        for nome_aba, _ in ABAS:
+            self.tabview.add(nome_aba)
+            self.tabview.tab(nome_aba).grid_rowconfigure(0, weight=1)
+            self.tabview.tab(nome_aba).grid_columnconfigure(0, weight=1)
 
-        self.notebook = ttk.Notebook(self.janela)
-        self.notebook.pack(fill="both", expand=True, padx=15, pady=15)
+        def _embutir(frame):
+            frame.grid(row=0, column=0, sticky="nsew")
 
-        self.aba_distribuicao = JanelaDistribuicao(self.notebook, self.data_manager, self.price_manager, self.analysis_engine)
-        self.aba_caixa        = JanelaCaixa(self.notebook, self.data_manager, self.price_manager, self.analysis_engine)
-        self.aba_registro     = JanelaRegistro(self.notebook, self.data_manager, self.price_manager, self.analysis_engine, MOEDAS_SUPORTADAS, self.atualizar_todas_as_analises)
-        self.aba_edicao       = JanelaEdicao(self.notebook, self.data_manager, self.price_manager, self.analysis_engine, self.atualizar_todas_as_analises)
+        self.aba_distribuicao = JanelaDistribuicao(
+            self.tabview.tab("📈  Dashboard Geral"),
+            self.data_manager, self.price_manager, self.analysis_engine,
+        )
+        _embutir(self.aba_distribuicao)
+
+        self.aba_caixa = JanelaCaixa(
+            self.tabview.tab("💰  Caixa (USDT)"),
+            self.data_manager, self.price_manager, self.analysis_engine,
+        )
+        _embutir(self.aba_caixa)
+
+        self.aba_registro = JanelaRegistro(
+            self.tabview.tab("✏️  Registrar Operação"),
+            self.data_manager, self.price_manager, self.analysis_engine,
+            MOEDAS_SUPORTADAS, self.atualizar_todas_as_analises,
+        )
+        _embutir(self.aba_registro)
+
+        self.aba_edicao = JanelaEdicao(
+            self.tabview.tab("⚙️  Histórico e Edição"),
+            self.data_manager, self.price_manager, self.analysis_engine,
+            self.atualizar_todas_as_analises,
+        )
+        _embutir(self.aba_edicao)
 
         self.aba_moedas = JanelaMoedas(
-            self.notebook,
+            self.tabview.tab("🪙  Gerenciar Moedas"),
             on_moedas_alteradas=self._ao_alterar_moedas,
             price_manager=self.price_manager,
         )
+        _embutir(self.aba_moedas)
 
-        self.aba_estrategia = JanelaEstrategia(self.notebook)
-
-        self.notebook.add(self.aba_distribuicao, text="📈  Dashboard Geral")
-        self.notebook.add(self.aba_caixa,        text="💰  Caixa (USDT)")
-        self.notebook.add(self.aba_registro,     text="✏️  Registrar Operação")
-        self.notebook.add(self.aba_edicao,       text="⚙️  Histórico e Edição")
-        self.notebook.add(self.aba_moedas,       text="🪙  Gerenciar Moedas")
-        self.notebook.add(self.aba_estrategia,   text="🧠  Tese Institucional")
+        self.janela.after(0, self._aplicar_cursor_abas)
 
         try:
             self.janela.state("zoomed")
         except Exception:
             self.janela.attributes("-zoomed", True)
-
 
     def _preencher_dados_iniciais(self):
         self.aba_caixa.atualizar()
@@ -118,8 +180,8 @@ class PortfolioDCA:
 
     def _iniciar_atualizacoes_automaticas(self) -> None:
         self._countdown_ativo = True
-        self._countdown = CONFIG["intervalo_atualizacao"]
-        self._after_id = None
+        self._countdown       = CONFIG["intervalo_atualizacao"]
+        self._after_id        = None
         self._tick_countdown()
 
     def _tick_countdown(self):
@@ -147,7 +209,7 @@ class PortfolioDCA:
             try:
                 self._atualizar_status("⟳ Atualizando preços na Binance...", CYAN)
                 sucesso = self.price_manager.atualizar_precos(MOEDAS_SUPORTADAS)
-                if not sucesso:                          
+                if not sucesso:
                     raise ConnectionError("Sem resposta da Binance")
                 self._atualizar_status("⚙ Calculando portfólio...", CYAN)
                 self.janela.after(0, self._atualizar_abas_seguro)
@@ -184,12 +246,15 @@ class PortfolioDCA:
 
     def _on_closing(self) -> None:
         self._countdown_ativo = False
-        self._stop_updates = True
+        self._stop_updates    = True
         self.janela.destroy()
 
 
 if __name__ == "__main__":
-    root_principal = ThemedTk(theme="arc")
+    ctk.set_appearance_mode("dark")
+    ctk.set_default_color_theme("dark-blue")
+
+    root_principal = ctk.CTk()
     root_principal.withdraw()
 
     def criar_app(data_mgr, price_mgr):

@@ -1,8 +1,4 @@
-# Edição restrita a 'Data', 'Taxa_BRL' e 'Operacao' por design intencional:
-# qualquer alteração em Moeda, Valor ou Preço invalida cálculos derivados
-# (quantidade, médias, P&L). A solução correta é excluir e reinserir —
-# sem debt técnico de recálculo retroativo.
-
+import platform
 import tkinter as tk
 from tkinter import ttk, messagebox
 from decimal import Decimal, InvalidOperation
@@ -11,8 +7,10 @@ import logging
 import threading
 from datetime import datetime
 
-from config.carregar_json import _carregar_moedas_config
+# pyrefly: ignore [missing-import]
+import customtkinter as ctk
 
+from config.carregar_json import _carregar_moedas_config
 from config.tema_cripto import (
     BG_SURFACE, BG_CARD, BG_INPUT,
     BTC_ORANGE, NEON_GREEN, CYAN,
@@ -20,33 +18,27 @@ from config.tema_cripto import (
     tag_cores_treeview,
 )
 
-
 logger = logging.getLogger(__name__)
 
-_ESTILO_CONFIGURADO = False
-
-def _garantir_estilo():
-    global _ESTILO_CONFIGURADO
-    if _ESTILO_CONFIGURADO:
-        return
-    style = ttk.Style()
-    style.configure(
-        "Cripto.TEntry",
-        fieldbackground=BG_INPUT,
-        foreground=TEXT_PRIMARY,
-        insertcolor=BTC_ORANGE,
-        bordercolor=BORDER,
-        relief="solid",
-    )
-    style.map("Cripto.TEntry",
-        bordercolor=[("focus", BTC_ORANGE)],
-        fieldbackground=[("readonly", BG_CARD)],
-        foreground=[("readonly", TEXT_SECONDARY)],
-    )
-    _ESTILO_CONFIGURADO = True
+_FONT         = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+_F_TITULO     = (_FONT, 18, "bold")
+_F_STATUS     = (_FONT, 11)
+_F_BADGE      = (_FONT, 11, "bold")
+_F_SECAO      = (_FONT, 13, "bold")
+_F_CARD_TITLE = (_FONT, 12, "bold")
+_F_CARD_SUB   = (_FONT, 10)
+_F_CARD_VAL   = (_FONT, 15, "bold")
+_F_TREE       = (_FONT, 10)
+_F_TREE_HEAD  = (_FONT, 10, "bold")
 
 
-class JanelaEdicao(ttk.Frame):
+def _f(t: tuple) -> ctk.CTkFont:
+    weight = "bold"   if "bold"   in t else "normal"
+    slant  = "italic" if "italic" in t else "roman"
+    return ctk.CTkFont(t[0], t[1], weight=weight, slant=slant)
+
+
+class JanelaEdicao(ctk.CTkFrame):
 
     _CAMPOS_EDITAVEIS = {"Data", "Taxa_BRL", "Operacao"}
 
@@ -58,18 +50,17 @@ class JanelaEdicao(ttk.Frame):
         analysis_engine: Any,
         on_change: Optional[Callable] = None,
     ):
-        super().__init__(parent, padding=10)
-        self.configure(style="TFrame")
+        super().__init__(parent, fg_color=BG_SURFACE)
 
-        self._data_manager = data_manager
-        self._price_manager = price_manager
+        self._data_manager    = data_manager
+        self._price_manager   = price_manager
         self._analysis_engine = analysis_engine
-        self._on_change = on_change or (lambda: None)
+        self._on_change       = on_change or (lambda: None)
         self._indice_editando: Optional[int] = None
         self._dados_carregados = False
-        self._mapa_indices = {}
+        self._mapa_indices: dict = {}
         self._op_original: Optional[dict] = None
-        self._carregando = False 
+        self._carregando = False
 
         self._build_ui()
         self.after(100, self.atualizar)
@@ -82,34 +73,44 @@ class JanelaEdicao(ttk.Frame):
         self._build_buttons()
 
     def _build_header(self) -> None:
-        header_frame = tk.Frame(self, bg=BG_SURFACE)
-        header_frame.pack(fill="x", padx=10, pady=(0, 5))
+        header = ctk.CTkFrame(self, fg_color=BG_SURFACE)
+        header.pack(fill="x", padx=10, pady=(14, 5))
 
-        tk.Label(
-            header_frame, text="Filtrar moeda:",
-            bg=BG_SURFACE, fg=TEXT_SECONDARY,
-            font=("Segoe UI", 9)
-        ).pack(side=tk.LEFT, padx=(0, 4))
+        ctk.CTkLabel(
+            header,
+            text="Filtrar moeda:",
+            font=_f(_F_CARD_SUB),
+            text_color=TEXT_SECONDARY,
+            fg_color=BG_SURFACE,
+        ).pack(side="left", padx=(0, 4))
 
-        self._filtro_moeda = tk.StringVar(value="Todas")
+        self._filtro_moeda = ctk.StringVar(value="Todas")
         moedas = _carregar_moedas_config()
 
-        cb = ttk.Combobox(
-            header_frame,
-            textvariable=self._filtro_moeda,
+        self._cb_filtro = ctk.CTkComboBox(
+            header,
+            variable=self._filtro_moeda,
             values=moedas,
             state="readonly",
-            width=10,
+            width=130,
+            font=_f(_F_CARD_SUB),
+            fg_color=BG_INPUT,
+            border_color=BORDER,
+            button_color=BTC_ORANGE,
+            dropdown_fg_color=BG_CARD,
+            text_color=TEXT_PRIMARY,
+            command=lambda _: self.atualizar(),
         )
-        cb.pack(side=tk.LEFT, padx=(0, 16))
-        cb.bind("<<ComboboxSelected>>", lambda _: self.atualizar())
+        self._cb_filtro.pack(side="left", padx=(0, 16))
 
-        self.lbl_status = tk.Label(
-            header_frame, text="",
-            bg=BG_SURFACE, fg=CYAN,
-            font=("Segoe UI", 10, "bold")
+        self.lbl_status = ctk.CTkLabel(
+            header,
+            text="",
+            font=_f(_F_BADGE),
+            text_color=CYAN,
+            fg_color=BG_SURFACE,
         )
-        self.lbl_status.pack(side=tk.LEFT)
+        self.lbl_status.pack(side="left")
 
     def _build_treeview(self) -> None:
         container = tk.Frame(self, bg=BG_SURFACE)
@@ -131,56 +132,65 @@ class JanelaEdicao(ttk.Frame):
 
         tag_cores_treeview(self._tree)
 
-        scrollbar.pack(side=tk.RIGHT, fill="y")
-        self._tree.pack(side=tk.LEFT, fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        self._tree.pack(side="left", fill="both", expand=True)
 
     def _build_form(self) -> None:
-        outer = tk.Frame(self, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
+        outer = ctk.CTkFrame(self, fg_color=BG_CARD, border_color=BORDER, border_width=1)
         outer.pack(fill="x", padx=10, pady=(0, 4))
 
-        tk.Label(
-            outer, text="EDITAR TRANSAÇÃO ⬇",
-            bg=BG_CARD, fg=BTC_ORANGE,
-            font=("Segoe UI", 9, "bold"),
-            padx=12, pady=6,
-        ).pack(anchor="w")
+        ctk.CTkLabel(
+            outer,
+            text="EDITAR TRANSAÇÃO ⬇",
+            font=_f(_F_CARD_TITLE),
+            text_color=BTC_ORANGE,
+            fg_color=BG_CARD,
+        ).pack(anchor="w", padx=12, pady=(6, 0))
 
-        tk.Frame(outer, bg=BORDER, height=1).pack(fill="x")
+        ctk.CTkFrame(outer, fg_color=BORDER, height=1).pack(fill="x")
 
-        center_container = tk.Frame(outer, bg=BG_CARD)
-        center_container.pack(fill="x", expand=True)
+        center = ctk.CTkFrame(outer, fg_color=BG_CARD)
+        center.pack(fill="x", expand=True)
 
-        form_frame = tk.Frame(center_container, bg=BG_CARD, pady=15)
-        form_frame.pack(anchor="center")
+        form = ctk.CTkFrame(center, fg_color=BG_CARD)
+        form.pack(anchor="center", pady=15)
 
-        self._campos = {}
-        _garantir_estilo()
+        self._campos: dict = {}
 
         for i, col in enumerate(self._data_manager.headers):
-            is_editavel = col in self._CAMPOS_EDITAVEIS
-            label_fg = TEXT_PRIMARY if is_editavel else TEXT_SECONDARY
+            is_edit  = col in self._CAMPOS_EDITAVEIS
+            lbl_cor  = TEXT_PRIMARY if is_edit else TEXT_SECONDARY
 
-            tk.Label(
-                form_frame, text=col,
-                bg=BG_CARD, fg=label_fg,
-                font=("Segoe UI", 9, "bold"),
+            ctk.CTkLabel(
+                form,
+                text=col,
+                font=_f(_F_TREE_HEAD),
+                text_color=lbl_cor,
+                fg_color=BG_CARD,
             ).grid(row=0, column=i, padx=10, pady=(0, 4), sticky="w")
 
             if col == "Operacao":
-                widget = ttk.Combobox(
-                    form_frame,
+                widget = ctk.CTkComboBox(
+                    form,
                     values=["compra", "venda"],
                     state="readonly",
-                    width=22,
-                    font=("Segoe UI", 12),
-                    justify="center",
+                    width=160,
+                    font=_f(_F_CARD_VAL),
+                    fg_color=BG_INPUT,
+                    border_color=BORDER,
+                    button_color=BTC_ORANGE,
+                    dropdown_fg_color=BG_CARD,
+                    text_color=TEXT_PRIMARY,
                 )
             else:
-                widget = ttk.Entry(
-                    form_frame,
-                    width=22,
-                    style="Cripto.TEntry",
-                    font=("Segoe UI", 12),
+                widget = ctk.CTkEntry(
+                    form,
+                    width=160,
+                    font=_f(_F_CARD_VAL),
+                    fg_color=BG_INPUT,
+                    text_color=TEXT_PRIMARY,
+                    border_color=BORDER,
+                    border_width=1,
                     justify="center",
                 )
 
@@ -188,78 +198,83 @@ class JanelaEdicao(ttk.Frame):
             self._campos[col] = widget
 
     def _build_obs(self) -> None:
-        obs_frame = tk.Frame(self, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
-        obs_frame.pack(fill="x", padx=10, pady=(0, 8))
+        obs = ctk.CTkFrame(self, fg_color=BG_CARD, border_color=BORDER, border_width=1)
+        obs.pack(fill="x", padx=10, pady=(0, 4))
 
-        tk.Label(
-            obs_frame,
-            text="ATENÇÃO 🚨",
-            bg=BG_CARD,
-            fg=TEXT_PRIMARY,
-            font=("Segoe UI", 14, "bold"),
-            padx=6,
-            pady=10
-        ).pack(side=tk.LEFT, fill="y", anchor="center")
-
-        tk.Frame(obs_frame, bg=BORDER, width=1)\
-            .pack(side=tk.LEFT, fill="y", pady=6)
-
-        primeira_linha = "SOMENTE A DATA, A TAXA BRL E A OPERACAO PODEM SER CORRIGIDAS AQUI."
+        primeira = "🚨  SOMENTE A DATA, A TAXA BRL E A OPERACAO PODEM SER CORRIGIDAS AQUI."
         restante = (
             "Para ajustar moeda, valor, preço ou qualquer outro dado, exclua esta transação "
             "e a reinsira com as informações corretas — isso garante que todos os cálculos "
             "de quantidade, custo médio e P&L permaneçam precisos e consistentes."
         )
 
-        obs_text = f"{primeira_linha}\n{restante}"
-
-        tk.Label(
-            obs_frame,
-            text=obs_text,
-            bg=BG_CARD,
-            fg=TEXT_SECONDARY,
-            font=("Segoe UI", 9),
-            wraplength=800,
+        ctk.CTkLabel(
+            obs,
+            text=f"{primeira}\n{restante}",
+            font=_f(_F_CARD_SUB),
+            text_color=TEXT_SECONDARY,
+            fg_color=BG_CARD,
+            wraplength=900,
             justify="left",
-            padx=6,
-            pady=10
-        ).pack(side=tk.LEFT, fill="x", expand=True)
+        ).pack(fill="x", padx=10, pady=5)
 
     def _build_buttons(self) -> None:
-        btn_frame = tk.Frame(self, bg=BG_SURFACE)
+        btn_frame = ctk.CTkFrame(self, fg_color=BG_SURFACE)
         btn_frame.pack(pady=(12, 10))
 
-        self.btn_load = ttk.Button(
-            btn_frame, text="📥  Carregar Selecionada",
-            command=self._carregar_transacao, cursor="hand2"
+        self.btn_load = ctk.CTkButton(
+            btn_frame,
+            text="📥  Carregar Selecionada",
+            font=_f(_F_CARD_TITLE),
+            fg_color=BG_CARD,
+            text_color=CYAN,
+            hover_color=CYAN,
+            border_width=0,
+            cursor="hand2",
+            height=38,
+            command=self._carregar_transacao,
         )
-        self.btn_load.pack(side=tk.LEFT, padx=6)
+        self.btn_load.pack(side="left", padx=6)
 
-        self.btn_save = ttk.Button(
-            btn_frame, text="💾  Salvar Alterações",
-            command=self._salvar_edicao, cursor="hand2"
+        self.btn_save = ctk.CTkButton(
+            btn_frame,
+            text="💾  Salvar Alterações",
+            font=_f(_F_CARD_TITLE),
+            fg_color=NEON_GREEN,
+            text_color="#000",
+            hover_color=BTC_ORANGE,
+            border_width=0,
+            cursor="hand2",
+            height=38,
+            command=self._salvar_edicao,
         )
-        self.btn_save.pack(side=tk.LEFT, padx=6)
+        self.btn_save.pack(side="left", padx=6)
 
-        self.btn_delete = ttk.Button(
-            btn_frame, text="🗑️  Excluir Selecionada",
-            command=self._excluir_transacao, style="Danger.TButton", cursor="hand2"
+        self.btn_delete = ctk.CTkButton(
+            btn_frame,
+            text="🗑️  Excluir Selecionada",
+            font=_f(_F_CARD_TITLE),
+            fg_color="#3a1a1a",
+            text_color="#ff4d4d",
+            hover_color="#ff4d4d",
+            border_width=0,
+            cursor="hand2",
+            height=38,
+            command=self._excluir_transacao,
         )
-        self.btn_delete.pack(side=tk.LEFT, padx=6)
+        self.btn_delete.pack(side="left", padx=6)
 
     def atualizar(self) -> None:
         if self._indice_editando is not None:
             return
-        
-        if self._carregando:  
+        if self._carregando:
             return
 
-        self._carregando = True     
-
-        self.lbl_status.config(text="🔄 Carregando histórico...")
-        self.btn_load.config(state="disabled")
-        self.btn_save.config(state="disabled")
-        self.btn_delete.config(state="disabled")
+        self._carregando = True
+        self.lbl_status.configure(text="🔄 Carregando histórico...")
+        self.btn_load.configure(state="disabled")
+        self.btn_save.configure(state="disabled")
+        self.btn_delete.configure(state="disabled")
 
         for item in self._tree.get_children():
             self._tree.delete(item)
@@ -278,15 +293,14 @@ class JanelaEdicao(ttk.Frame):
                     return datetime.min
 
             ops_com_indice.sort(key=get_data_segura, reverse=True)
-
             self.after(0, lambda: self._renderizar_tree(ops_com_indice))
         except Exception as e:
             self._carregando = False
-            self.after(0, lambda: self.lbl_status.config(text="⚠️ Erro ao carregar", fg="red"))
+            self.after(0, lambda: self.lbl_status.configure(text="⚠️ Erro ao carregar", text_color="red"))
             logger.error(f"Erro no histórico: {e}")
 
     def _renderizar_tree(self, ops_com_indice: list) -> None:
-        self._carregando = False 
+        self._carregando = False
         self._mapa_indices.clear()
 
         moeda_sel = self._filtro_moeda.get()
@@ -311,10 +325,10 @@ class JanelaEdicao(ttk.Frame):
             item_id = self._tree.insert("", "end", values=valores, tags=(tag,))
             self._mapa_indices[item_id] = orig_idx
 
-        self.lbl_status.config(text="")
-        self.btn_load.config(state="normal")
-        self.btn_save.config(state="normal")
-        self.btn_delete.config(state="normal")
+        self.lbl_status.configure(text="")
+        self.btn_load.configure(state="normal")
+        self.btn_save.configure(state="normal")
+        self.btn_delete.configure(state="normal")
         self._limpar_form()
 
     def _carregar_transacao(self) -> None:
@@ -333,16 +347,18 @@ class JanelaEdicao(ttk.Frame):
 
         for col, valor in zip(self._data_manager.headers, valores):
             widget = self._campos[col]
+            is_edit = col in self._CAMPOS_EDITAVEIS
 
-            if isinstance(widget, ttk.Combobox):
-                widget.config(state="readonly")
+            if isinstance(widget, ctk.CTkComboBox):
+                widget.configure(state="readonly")
                 widget.set(valor)
             else:
-                widget.config(state="normal")
+                widget.configure(state="normal")
                 valor_fmt = f"{float(valor):.2f}" if col == "Taxa_BRL" and valor != "" else valor
+                widget.delete(0, "end")
                 widget.insert(0, valor_fmt)
-                if col not in self._CAMPOS_EDITAVEIS:
-                    widget.config(state="readonly")
+                if not is_edit:
+                    widget.configure(state="readonly")
 
     def _salvar_edicao(self) -> None:
         if self._indice_editando is None or self._op_original is None:
@@ -380,7 +396,7 @@ class JanelaEdicao(ttk.Frame):
             if self._data_manager.atualizar_operacao(self._indice_editando, nova_op):
                 messagebox.showinfo("Sucesso", "Transação atualizada com sucesso!")
                 self._indice_editando = None
-                self._op_original = None
+                self._op_original     = None
                 self._on_change()
                 self.atualizar()
 
@@ -399,17 +415,17 @@ class JanelaEdicao(ttk.Frame):
             if self._data_manager.excluir_operacao(self._indice_editando):
                 messagebox.showinfo("Sucesso", "Excluído com sucesso!")
                 self._indice_editando = None
-                self._op_original = None
+                self._op_original     = None
                 self._on_change()
                 self.atualizar()
 
     def _limpar_form(self) -> None:
-        for entry in self._campos.values():
-            if isinstance(entry, ttk.Combobox):
-                entry.config(state="readonly")
-                entry.set("")
+        for col, widget in self._campos.items():
+            if isinstance(widget, ctk.CTkComboBox):
+                widget.configure(state="readonly")
+                widget.set("")
             else:
-                entry.config(state="normal")
-                entry.delete(0, tk.END)
+                widget.configure(state="normal")
+                widget.delete(0, "end")
         self._indice_editando = None
-        self._op_original = None
+        self._op_original     = None
