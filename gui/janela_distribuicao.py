@@ -84,17 +84,17 @@ class JanelaDistribuicao(ctk.CTkFrame):
         self.lbl_badge_texto.pack(side=tk.LEFT, padx=(0, 12), pady=4)
 
         cards_outer = ctk.CTkFrame(self, fg_color="transparent")
-        cards_outer.pack(fill="x", pady=(0, 6))
+        cards_outer.pack(fill="x", pady=(0, 2))
         for col in range(5):
             cards_outer.columnconfigure(col, weight=1)
 
         def _card(row, col, titulo, subtitulo, cor):
             frame = ctk.CTkFrame(cards_outer, fg_color=BG_CARD, border_color=BORDER, border_width=1, corner_radius=8)
             frame.grid(row=row, column=col, sticky="nsew", padx=5, pady=2)
-            ctk.CTkLabel(frame, text=titulo, font=_F_CARD_TITLE, text_color=TEXT_SECONDARY, fg_color="transparent").pack(fill="x", pady=(8, 0), padx=10)
+            ctk.CTkLabel(frame, text=titulo, font=_F_CARD_TITLE, text_color=TEXT_SECONDARY, fg_color="transparent").pack(fill="x", pady=(4, 0), padx=10)
             ctk.CTkLabel(frame, text=subtitulo, font=_F_CARD_SUB, text_color=TEXT_MUTED, fg_color="transparent").pack(fill="x", padx=10)
             lbl = ctk.CTkLabel(frame, text="--", font=_F_CARD_VAL, text_color=cor, fg_color="transparent")
-            lbl.pack(fill="x", pady=(2, 8), padx=10)
+            lbl.pack(fill="x", pady=(1, 4), padx=10)
             return lbl
 
         self._lbl_patrimonio = _card(0, 0, "💼 Patrimônio Total",  "preço mercado × posição",  BTC_ORANGE)
@@ -408,7 +408,7 @@ class JanelaDistribuicao(ctk.CTkFrame):
                     text_color=cor, fg_color="transparent",
                     anchor=anchor, cursor="hand2",
                 )
-                lbl.grid(row=0, column=i, sticky="ew", padx=10, pady=8)
+                lbl.grid(row=0, column=i, sticky="ew", padx=10, pady=3)
                 
                 lbl.bind("<Button-1>", lambda e, r=row: self._toggle_det_sel(r))
                 lbl.bind("<Enter>",    lambda e, r=row: self._hover_det(r, True))

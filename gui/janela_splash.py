@@ -5,6 +5,7 @@ import logging
 import platform
 import threading
 import tkinter as tk
+# pyrefly: ignore [missing-import]
 import customtkinter as ctk
 from tkinter import messagebox
 

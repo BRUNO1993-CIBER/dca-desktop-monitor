@@ -1,5 +1,6 @@
-import tkinter as tk
-from tkinter import ttk
+import platform
+# pyrefly: ignore [missing-import]
+import customtkinter as ctk
 from typing import Any, Callable, List, Optional
 
 from config.tema_cripto import (
@@ -8,19 +9,37 @@ from config.tema_cripto import (
     BTC_ORANGE, NEON_GREEN, NEON_RED, CYAN, YELLOW,
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED,
 )
+from widgets.combo_custom import ComboCustom
 
-FONT_MONO_TITLE = ("Consolas", 14, "bold")
-FONT_MONO_LABEL = ("Consolas", 10, "bold")
-FONT_MONO_INPUT = ("Consolas", 11)
-FONT_MONO_SMALL = ("Consolas", 9)
-FONT_MONO_BTN   = ("Consolas", 12, "bold")
-FONT_MONO_BADGE = ("Consolas", 9, "bold")
+ctk.set_appearance_mode("dark")
 
-WRAP_W = 210
-WRAP_H = 34
+_FONT_NAME    = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+_F_BADGE      = (_FONT_NAME, 11, "bold")
+_F_SECAO      = (_FONT_NAME, 12, "bold")
+_F_CARD_TITLE = (_FONT_NAME, 11, "bold")
+_F_CARD_SUB   = (_FONT_NAME, 10)
+_F_CARD_VAL   = (_FONT_NAME, 14, "bold")
+_F_TREE       = (_FONT_NAME, 11)
+_FONT         = (_FONT_NAME, 11, "bold")
+_FONT_HEAD    = (_FONT_NAME, 11, "bold")
+_SEL_BG       = "#1A3A5C"
+_SEL_GLOW     = "#4A9EFF"
+_HOVER_BG     = "#1E2D3D"
 
 
-class JanelaRegistroUI(ttk.Frame):
+class _SectionBar(ctk.CTkFrame):
+    def __init__(self, parent, text: str, **kw):
+        super().__init__(parent, fg_color=BG_INPUT, corner_radius=4,
+                         border_width=0, height=32, **kw)
+        self.pack_propagate(False)
+        ctk.CTkFrame(self, fg_color=BTC_ORANGE, width=3,
+                     corner_radius=0).pack(side="left", fill="y")
+        ctk.CTkLabel(self, text=f"  {text}", font=_F_SECAO,
+                     text_color=BTC_ORANGE, anchor="w").pack(
+            side="left", fill="both", expand=True, padx=8)
+
+
+class JanelaRegistroUI(ctk.CTkFrame):
 
     def __init__(
         self,
@@ -31,205 +50,172 @@ class JanelaRegistroUI(ttk.Frame):
         on_calcular: Callable,
         on_salvar: Callable,
     ):
-        super().__init__(parent)
+        super().__init__(parent, fg_color=BG_SURFACE, corner_radius=0)
         self._moedas           = moedas_suportadas
         self._on_moeda_changed = on_moeda_changed
         self._on_tipo_changed  = on_tipo_changed
         self._on_calcular      = on_calcular
         self._on_salvar        = on_salvar
 
-        self.configure(style="Reg.TFrame")
-        self._configurar_estilos()
+        self.pack(fill="both", expand=True)
         self._build_ui()
 
-    def _configurar_estilos(self) -> None:
-        s = ttk.Style()
-
-        s.configure("Reg.TFrame",     background=BG_SURFACE)
-        s.configure("RegCard.TFrame", background=BG_CARD)
-
-        s.configure("Titulo.TLabel",
-                    font=FONT_MONO_TITLE, background=BG_SURFACE, foreground=BTC_ORANGE)
-        s.configure("Sub.TLabel",
-                    font=FONT_MONO_SMALL, background=BG_SURFACE, foreground=TEXT_MUTED)
-        s.configure("Padrao.TLabel",
-                    font=FONT_MONO_LABEL, background=BG_CARD, foreground=TEXT_SECONDARY)
-        s.configure("Info.TLabel",
-                    font=FONT_MONO_SMALL, background=BG_CARD, foreground=TEXT_SECONDARY)
-        s.configure("Destaque.TLabel",
-                    font=FONT_MONO_BADGE, background=BG_CARD, foreground=CYAN)
-        s.configure("Saldo.TLabel",
-                    font=FONT_MONO_BADGE, background=BG_CARD, foreground=NEON_GREEN)
-        s.configure("Travado.TLabel",
-                    font=FONT_MONO_BADGE, background=BG_CARD, foreground=YELLOW)
-        s.configure("Dica.TLabel",
-                    font=FONT_MONO_SMALL, background=BG_CARD, foreground=CYAN)
-        s.configure("Erro.TLabel",
-                    font=FONT_MONO_SMALL, background=BG_CARD, foreground=NEON_RED)
-
-        s.configure("Reg.TCombobox",
-                    fieldbackground=BG_INPUT, background=BG_INPUT,
-                    foreground=TEXT_PRIMARY, selectbackground=BG_INPUT,
-                    selectforeground=BTC_ORANGE, bordercolor=BORDER,
-                    arrowcolor=BTC_ORANGE, padding=8)
-        s.map("Reg.TCombobox",
-              fieldbackground=[("readonly", BG_INPUT), ("disabled", BG_DEEP)],
-              foreground=[("disabled", TEXT_MUTED)],
-              bordercolor=[("focus", BORDER_ACC)])
-
-        s.configure("Reg.TEntry",
-                    fieldbackground=BG_INPUT, foreground=TEXT_PRIMARY,
-                    insertcolor=BTC_ORANGE, bordercolor=BORDER, padding=8)
-        s.map("Reg.TEntry",
-              bordercolor=[("focus", BORDER_ACC)],
-              fieldbackground=[("disabled", BG_DEEP)],
-              foreground=[("disabled", TEXT_MUTED)])
-
-        s.configure("Reg.TButton",
-                    font=FONT_MONO_BTN, foreground=BG_DEEP,
-                    background=BTC_ORANGE, borderwidth=0,
-                    focuscolor=BTC_ORANGE, padding=(0, 12))
-        s.map("Reg.TButton",
-              background=[("active", "#e8820f"), ("disabled", BORDER)],
-              foreground=[("disabled", TEXT_MUTED)])
-
-    def _build_ui(self) -> None:
+    def _build_ui(self):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        outer = tk.Frame(self, bg=BG_SURFACE)
-        outer.grid(row=0, column=0, sticky="nsew")
-        outer.columnconfigure(0, weight=1)
-        outer.rowconfigure(1, weight=1)
+        center = ctk.CTkFrame(self, fg_color="transparent")
+        center.grid(row=0, column=0)
 
-        self._build_header(outer)
-        self._build_card(outer)
-        self._build_footer(outer)
+        self._build_card(center)
+        self._build_footer(center)
 
-    def _build_header(self, parent: tk.Frame) -> None:
-        hdr = tk.Frame(parent, bg=BG_SURFACE)
-        hdr.grid(row=0, column=0, sticky="ew", padx=40, pady=(30, 0))
-        hdr.columnconfigure(1, weight=1)
+    def _build_card(self, parent: ctk.CTkFrame):
+        outer = ctk.CTkFrame(parent, fg_color=BG_CARD,
+                             border_color=BORDER, border_width=1,
+                             corner_radius=8)
+        outer.pack(pady=30, padx=40)
 
-        tk.Frame(hdr, bg=BTC_ORANGE, width=4).grid(
-            row=0, column=0, rowspan=2, sticky="ns", padx=(0, 14))
+        title_strip = ctk.CTkFrame(outer, fg_color=BG_INPUT,
+                                   corner_radius=0, height=46,
+                                   border_color=BTC_ORANGE, border_width=2)
+        title_strip.pack(fill="x")
+        title_strip.pack_propagate(False)
 
-        tk.Label(hdr, text="REGISTRAR OPERACAO",
-                 font=FONT_MONO_TITLE, bg=BG_SURFACE, fg=BTC_ORANGE).grid(
-            row=0, column=1, sticky="w")
+        ctk.CTkFrame(title_strip, fg_color=BTC_ORANGE, width=5,
+                     corner_radius=0).pack(side="left", fill="y")
+        ctk.CTkLabel(title_strip, text="  REGISTRAR OPERACAO",
+                     font=_F_CARD_VAL, text_color=BTC_ORANGE,
+                     anchor="w").pack(side="left", padx=10,
+                                      fill="both", expand=True)
 
-        tk.Label(hdr, text="nova entrada no livro de ordens",
-                 font=FONT_MONO_SMALL, bg=BG_SURFACE, fg=TEXT_MUTED).grid(
-            row=1, column=1, sticky="w", pady=(2, 0))
-
-        tk.Frame(parent, bg=BORDER, height=1).grid(
-            row=0, column=0, sticky="ew", padx=40, pady=(78, 0))
-
-    def _build_card(self, parent: tk.Frame) -> None:
-        card = tk.Frame(parent, bg=BG_CARD,
-                        highlightbackground=BORDER, highlightthickness=1)
-        card.grid(row=1, column=0, sticky="n", padx=40, pady=24)
-        card.columnconfigure(0, weight=1)
-
-        tk.Frame(card, bg=BTC_ORANGE, height=3).grid(row=0, column=0, sticky="ew")
-
-        inner = tk.Frame(card, bg=BG_CARD)
-        inner.grid(row=1, column=0, padx=36, pady=28)
+        inner = ctk.CTkFrame(outer, fg_color="transparent")
+        inner.pack(padx=36, pady=24)
 
         self._build_form(inner)
 
-    def _build_form(self, parent: tk.Frame) -> None:
-        parent.columnconfigure(0, minsize=140)
-        parent.columnconfigure(1, minsize=WRAP_W + 2)
-        parent.columnconfigure(2, minsize=180)
+    def _build_form(self, p: ctk.CTkFrame):
+        p.columnconfigure(0, minsize=130)
+        p.columnconfigure(1, minsize=225)
+        p.columnconfigure(2, minsize=185)
 
-        def section_bar(row, text):
-            tk.Label(parent, text=text, font=FONT_MONO_BADGE,
-                     bg=BG_INPUT, fg=BTC_ORANGE, padx=10, pady=4, anchor="w").grid(
-                row=row, column=0, columnspan=3, sticky="ew", pady=(16, 10))
+        def sep(row):
+            ctk.CTkFrame(p, fg_color=BORDER, height=1, corner_radius=0).grid(
+                row=row, column=0, columnspan=3, sticky="ew", pady=(8, 0))
 
-        def field_label(row, text):
-            tk.Label(parent, text=text, font=FONT_MONO_LABEL,
-                     bg=BG_CARD, fg=TEXT_SECONDARY, anchor="e", width=16).grid(
-                row=row, column=0, sticky="e", pady=8, padx=(0, 14))
+        def section(row, text):
+            _SectionBar(p, text).grid(
+                row=row, column=0, columnspan=3, sticky="ew", pady=(4, 6))
 
-        def wrap(row, col):
-            f = tk.Frame(parent, bg=BORDER, width=WRAP_W + 2, height=WRAP_H + 2)
-            f.grid(row=row, column=col, sticky="w", pady=8)
-            f.grid_propagate(False)
-            f.pack_propagate(False)
-            return f
+        def label(row, text):
+            lbl = ctk.CTkLabel(p, text=text, font=_F_BADGE,
+                               text_color=TEXT_SECONDARY,
+                               anchor="e", width=128)
+            lbl.grid(row=row, column=0, sticky="e", pady=7, padx=(0, 14))
+            return lbl
 
-        section_bar(0, "  ATIVO")
+        def entry(row):
+            e = ctk.CTkEntry(p, font=_F_TREE, height=36, width=223,
+                             fg_color=BG_INPUT, text_color=TEXT_PRIMARY,
+                             border_color=BORDER, border_width=1,
+                             corner_radius=5,
+                             placeholder_text_color=TEXT_MUTED)
+            e.grid(row=row, column=1, sticky="w", pady=7)
+            return e
 
-        field_label(1, "MOEDA")
-        self._combo_moeda = ttk.Combobox(wrap(1, 1), values=self._moedas,
-                                         font=FONT_MONO_INPUT, state="readonly",
-                                         style="Reg.TCombobox")
-        self._combo_moeda.pack(fill="both", expand=True)
-        self._combo_moeda.bind("<<ComboboxSelected>>", self._on_moeda_changed)
+        def combo(row):
+            c = ComboCustom(
+                p,
+                width=223,
+                height=36,
+                fg_color=BG_INPUT,
+                text_color=TEXT_PRIMARY,
+                border_color=BORDER,
+                button_color=BTC_ORANGE,
+                button_hover_color="#e8820f",
+                dropdown_fg_color=BG_CARD,
+                dropdown_hover_color=_HOVER_BG,
+            )
+            c.grid(row=row, column=1, sticky="w", pady=7)
+            return c
 
-        self._label_preco_atual = tk.Label(parent, text="", font=FONT_MONO_BADGE,
-                                           bg=BG_CARD, fg=CYAN, anchor="w")
-        self._label_preco_atual.grid(row=1, column=2, sticky="w", padx=(16, 0))
+        def badge(row, color=TEXT_SECONDARY):
+            lbl = ctk.CTkLabel(p, text="", font=_F_BADGE,
+                               text_color=color, anchor="w", width=175)
+            lbl.grid(row=row, column=2, sticky="w", padx=(14, 0), pady=7)
+            return lbl
 
-        section_bar(2, "  OPERACAO")
+        section(0, "ATIVO")
+        label(1, "MOEDA")
+        self._combo_moeda = combo(1)
+        self._combo_moeda.configure(values=self._moedas,
+                                    command=self._on_moeda_changed)
+        self._lbl_preco_atual = badge(1, CYAN)
 
-        field_label(3, "TIPO")
-        self._combo_tipo = ttk.Combobox(wrap(3, 1), font=FONT_MONO_INPUT,
-                                        state="disabled", style="Reg.TCombobox")
-        self._combo_tipo.pack(fill="both", expand=True)
-        self._combo_tipo.bind("<<ComboboxSelected>>", self._on_tipo_changed)
+        sep(2)
+        section(3, "OPERACAO")
+        label(4, "TIPO")
+        self._combo_tipo = combo(4)
+        self._combo_tipo.configure(state="disabled",
+                                   command=self._on_tipo_changed)
+        self._lbl_saldo = badge(4, NEON_GREEN)
 
-        self._label_saldo = tk.Label(parent, text="", font=FONT_MONO_BADGE,
-                                     bg=BG_CARD, fg=NEON_GREEN, anchor="w")
-        self._label_saldo.grid(row=3, column=2, sticky="w", padx=(16, 0))
+        sep(5)
+        section(6, "VALORES")
 
-        section_bar(4, "  VALORES")
-
-        self._label_preco_titulo = tk.Label(parent, text="PRECO UNIT.",
-                                            font=FONT_MONO_LABEL, bg=BG_CARD,
-                                            fg=TEXT_SECONDARY, anchor="e", width=16)
-        self._label_preco_titulo.grid(row=5, column=0, sticky="e", pady=8, padx=(0, 14))
-
-        self._entry_preco = ttk.Entry(wrap(5, 1), font=FONT_MONO_INPUT,
-                                      state="disabled", style="Reg.TEntry")
-        self._entry_preco.pack(fill="both", expand=True)
+        self._lbl_preco_titulo = label(7, "PRECO UNIT.")
+        self._entry_preco = entry(7)
+        self._entry_preco.configure(state="disabled")
         self._entry_preco.bind("<KeyRelease>", self._on_calcular)
 
-        field_label(6, "VALOR (USDT)")
-        self._entry_valor = ttk.Entry(wrap(6, 1), font=FONT_MONO_INPUT,
-                                      state="disabled", style="Reg.TEntry")
-        self._entry_valor.pack(fill="both", expand=True)
+        label(8, "VALOR (USDT)")
+        self._entry_valor = entry(8)
+        self._entry_valor.configure(state="disabled")
         self._entry_valor.bind("<KeyRelease>", self._on_calcular)
+        self._lbl_quantidade = badge(8, TEXT_SECONDARY)
 
-        self._label_quantidade = tk.Label(parent, text="", font=FONT_MONO_BADGE,
-                                          bg=BG_CARD, fg=TEXT_SECONDARY, anchor="w")
-        self._label_quantidade.grid(row=6, column=2, sticky="w", padx=(16, 0))
+        self._lbl_ajuda = ctk.CTkLabel(p, text="", font=_F_CARD_SUB,
+                                       text_color=CYAN, anchor="w",
+                                       width=360, justify="left")
+        self._lbl_ajuda.grid(row=9, column=1, columnspan=2,
+                             sticky="w", pady=(4, 0))
 
-        self._label_ajuda = tk.Label(parent, text="", font=FONT_MONO_SMALL,
-                                     bg=BG_CARD, fg=CYAN, justify="left", anchor="w")
-        self._label_ajuda.grid(row=7, column=1, columnspan=2, sticky="w", pady=(4, 0))
+        self._lbl_erro_saldo = ctk.CTkLabel(p, text="", font=_F_CARD_SUB,
+                                            text_color=NEON_RED, anchor="w",
+                                            width=360, justify="left")
+        self._lbl_erro_saldo.grid(row=10, column=1, columnspan=2,
+                                  sticky="w", pady=(2, 4))
 
-        self._label_erro_saldo = tk.Label(parent, text="", font=FONT_MONO_SMALL,
-                                          bg=BG_CARD, fg=NEON_RED, justify="left", anchor="w")
-        self._label_erro_saldo.grid(row=8, column=1, columnspan=2, sticky="w", pady=(2, 4))
+    def _build_footer(self, parent: ctk.CTkFrame):
+        ctk.CTkFrame(parent, fg_color=BORDER, height=1,
+                     corner_radius=0).pack(fill="x", padx=40, pady=(0, 20))
 
-    def _build_footer(self, parent: tk.Frame) -> None:
-        tk.Frame(parent, bg=BORDER, height=1).grid(
-            row=2, column=0, sticky="ew", padx=40, pady=(0, 20))
+        footer = ctk.CTkFrame(parent, fg_color="transparent")
+        footer.pack(pady=(0, 30))
 
-        btn_wrap = tk.Frame(parent, bg=BG_SURFACE)
-        btn_wrap.grid(row=3, column=0, pady=(0, 30))
+        self._btn_salvar = ctk.CTkButton(
+            footer,
+            text="CONFIRMAR OPERACAO",
+            font=_FONT,
+            height=46,
+            width=290,
+            fg_color=BTC_ORANGE,
+            hover_color="#e8820f",
+            text_color=BG_DEEP,
+            corner_radius=6,
+            state="disabled",
+            cursor="hand2",
+            command=self._on_salvar,
+        )
+        self._btn_salvar.pack()
 
-        self._btn_salvar = ttk.Button(btn_wrap, text="CONFIRMAR OPERACAO",
-                                      command=self._on_salvar, style="Reg.TButton",
-                                      cursor="hand2", state="disabled")
-        self._btn_salvar.pack(ipady=6, ipadx=40)
-
-        self._label_status_btn = tk.Label(btn_wrap, text="preencha todos os campos",
-                                          font=FONT_MONO_SMALL, bg=BG_SURFACE, fg=TEXT_MUTED)
-        self._label_status_btn.pack(pady=(8, 0))
+        self._lbl_status_btn = ctk.CTkLabel(
+            footer,
+            text="preencha todos os campos",
+            font=_F_CARD_SUB,
+            text_color=TEXT_MUTED,
+        )
+        self._lbl_status_btn.pack(pady=(8, 0))
 
     def get_moeda(self) -> str:
         return self._combo_moeda.get()
@@ -244,51 +230,51 @@ class JanelaRegistroUI(ttk.Frame):
         return self._entry_preco.get()
 
     def set_combo_tipo_values(self, values: list, state: str = "readonly") -> None:
-        self._combo_tipo.config(values=values, state=state)
+        self._combo_tipo.configure(values=values, state=state)
 
     def set_combo_tipo_state(self, state: str) -> None:
-        self._combo_tipo.config(state=state)
+        self._combo_tipo.configure(state=state)
 
     def set_combo_tipo_value(self, value: str) -> None:
         self._combo_tipo.set(value)
 
     def set_combo_moedas(self, moedas: list) -> None:
         self._moedas = moedas
-        self._combo_moeda.config(values=moedas)
+        self._combo_moeda.configure(values=moedas)
 
     def set_combo_moeda_value(self, value: str) -> None:
         self._combo_moeda.set(value)
 
     def set_entry_preco(self, value: str, state_before: str = "normal",
                         state_after: Optional[str] = None) -> None:
-        self._entry_preco.config(state="normal")
-        self._entry_preco.delete(0, tk.END)
+        self._entry_preco.configure(state="normal")
+        self._entry_preco.delete(0, "end")
         if value:
             self._entry_preco.insert(0, value)
         if state_after:
-            self._entry_preco.config(state=state_after)
+            self._entry_preco.configure(state=state_after)
 
     def set_entry_valor(self, value: str) -> None:
-        self._entry_valor.config(state="normal")
-        self._entry_valor.delete(0, tk.END)
+        self._entry_valor.configure(state="normal")
+        self._entry_valor.delete(0, "end")
         if value:
             self._entry_valor.insert(0, value)
 
     def set_entry_preco_state(self, state: str) -> None:
-        self._entry_preco.config(state=state)
+        self._entry_preco.configure(state=state)
 
     def set_entry_valor_state(self, state: str) -> None:
-        self._entry_valor.config(state=state)
+        self._entry_valor.configure(state=state)
 
     def set_label_preco_atual(self, text: str) -> None:
-        self._label_preco_atual.config(text=text)
+        self._lbl_preco_atual.configure(text=text)
 
     def set_label_preco_titulo(self, text: str) -> None:
-        self._label_preco_titulo.config(text=text)
+        self._lbl_preco_titulo.configure(text=text)
 
     def set_label_saldo(self, text: str, style: str = "Saldo.TLabel") -> None:
         cor = NEON_GREEN if "Saldo" in style else TEXT_SECONDARY
-        self._label_saldo.config(text=text, fg=cor)
+        self._lbl_saldo.configure(text=text, text_color=cor)
 
     def set_label_quantidade(self, text: str, style: str = "Info.TLabel") -> None:
         cor_map = {
@@ -298,41 +284,48 @@ class JanelaRegistroUI(ttk.Frame):
             "Saldo.TLabel":    NEON_GREEN,
             "Destaque.TLabel": CYAN,
         }
-        self._label_quantidade.config(text=text, fg=cor_map.get(style, TEXT_SECONDARY))
+        self._lbl_quantidade.configure(
+            text=text, text_color=cor_map.get(style, TEXT_SECONDARY))
 
     def set_label_ajuda(self, text: str) -> None:
-        self._label_ajuda.config(text=text)
+        self._lbl_ajuda.configure(text=text)
 
     def set_label_erro_saldo(self, text: str) -> None:
-        self._label_erro_saldo.config(text=text)
+        self._lbl_erro_saldo.configure(text=text)
 
     def set_btn_salvar_state(self, state: str) -> None:
-        self._btn_salvar.config(state=state)
+        self._btn_salvar.configure(state=state)
         if state == "normal":
-            self._label_status_btn.config(text="pronto para registrar  OK", fg=NEON_GREEN)
+            self._lbl_status_btn.configure(
+                text="pronto para registrar  ✓", text_color=NEON_GREEN)
         else:
-            self._label_status_btn.config(text="preencha todos os campos", fg=TEXT_MUTED)
+            self._lbl_status_btn.configure(
+                text="preencha todos os campos", text_color=TEXT_MUTED)
 
     def limpar_campos(self) -> None:
         self._combo_moeda.set("")
         self._combo_tipo.set("")
-        self._combo_tipo.config(state="disabled")
-        self._entry_preco.config(state="normal")
-        self._entry_preco.delete(0, tk.END)
-        self._entry_preco.config(state="disabled")
-        self._entry_valor.config(state="normal")
-        self._entry_valor.delete(0, tk.END)
-        self._entry_valor.config(state="disabled")
-        self._label_quantidade.config(text="", fg=TEXT_SECONDARY)
-        self._label_preco_atual.config(text="")
-        self._label_saldo.config(text="", fg=NEON_GREEN)
-        self._label_ajuda.config(text="")
-        self._label_erro_saldo.config(text="")
-        self._label_preco_titulo.config(text="PRECO UNIT.")
-        self._btn_salvar.config(state="disabled")
-        self._label_status_btn.config(text="preencha todos os campos", fg=TEXT_MUTED)
+        self._combo_tipo.configure(state="disabled")
 
-    def atualizar_lista_moedas(self, novas_moedas: list) -> None:
+        self._entry_preco.configure(state="normal")
+        self._entry_preco.delete(0, "end")
+        self._entry_preco.configure(state="disabled")
+
+        self._entry_valor.configure(state="normal")
+        self._entry_valor.delete(0, "end")
+        self._entry_valor.configure(state="disabled")
+
+        self._lbl_quantidade.configure(text="", text_color=TEXT_SECONDARY)
+        self._lbl_preco_atual.configure(text="")
+        self._lbl_saldo.configure(text="", text_color=NEON_GREEN)
+        self._lbl_ajuda.configure(text="")
+        self._lbl_erro_saldo.configure(text="")
+        self._lbl_preco_titulo.configure(text="PRECO UNIT.")
+        self._btn_salvar.configure(state="disabled")
+        self._lbl_status_btn.configure(
+            text="preencha todos os campos", text_color=TEXT_MUTED)
+
+    def atualizar_lista_moedas(self, novas_moedas: list) -> str:
         moeda_atual = self._combo_moeda.get()
         self.set_combo_moedas(novas_moedas)
         return moeda_atual
