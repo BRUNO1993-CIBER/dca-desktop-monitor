@@ -12,6 +12,7 @@ _FONT_HEAD  = ("Segoe UI", 11, "bold")
 _SEL_BG     = "#1A3A5C"
 _SEL_GLOW   = "#4A9EFF"
 _HOVER_BG   = "#1E2D3D"
+_COL_MIN    = (90, 60, 100)
 
 
 def _hex_to_rgb(h: str):
@@ -70,27 +71,21 @@ class DonutChart(ctk.CTkFrame):
         self._row_widgets: List           = []
 
         self.canvas.bind("<Configure>", self._on_resize)
-        self.canvas.bind("<Motion>", self._on_canvas_motion)
-        self.canvas.bind("<Button-1>", self._on_canvas_click)
-        self.canvas.bind("<Leave>", self._on_canvas_leave)
+        self.canvas.bind("<Motion>",    self._on_canvas_motion)
+        self.canvas.bind("<Button-1>",  self._on_canvas_click)
+        self.canvas.bind("<Leave>",     self._on_canvas_leave)
 
     def _build_tabela(self):
         header = ctk.CTkFrame(self.leg_frame, fg_color=BG_DEEP, corner_radius=6)
-        header.pack(fill="x", padx=(0, 16), pady=(0, 2))
+        header.pack(fill="x", padx=(0, 28), pady=(0, 2))
 
         for i in range(3):
-            header.columnconfigure(i, weight=1, uniform="leg_col")
+            header.columnconfigure(i, weight=1, uniform="leg_col", minsize=_COL_MIN[i])
 
         labels = ("ATIVO", "%", "QUANTIDADE")
 
         for col, txt in enumerate(labels):
-            if col == 1:
-                pad_x_val = (22, 6)   
-                sticky = "w"         
-            else:
-                pad_x_val = 6
-                sticky = "w"
-
+            pad_x_val = (16, 12) if col == 1 else 6
             ctk.CTkLabel(
                 header,
                 text=txt,
@@ -98,7 +93,7 @@ class DonutChart(ctk.CTkFrame):
                 text_color=TEXT_SECONDARY,
                 fg_color="transparent",
                 anchor="w",
-            ).grid(row=0, column=col, sticky=sticky, padx=pad_x_val, pady=3)
+            ).grid(row=0, column=col, sticky="w", padx=pad_x_val, pady=3)
 
         self._scroll_frame = ctk.CTkScrollableFrame(
             self.leg_frame,
@@ -106,7 +101,7 @@ class DonutChart(ctk.CTkFrame):
             scrollbar_button_color=BORDER,
             scrollbar_button_hover_color=TEXT_MUTED,
             corner_radius=6,
-            width=300
+            width=300,
         )
         self._scroll_frame.pack(fill="both", expand=True, padx=(0, 16))
 
@@ -138,16 +133,16 @@ class DonutChart(ctk.CTkFrame):
             self._bind_scroll_row(child)
 
     def atualizar_dados(self, dados: List[tuple], cor_map: Dict[str, str]) -> None:
-        self._dados    = dados
-        self._cor_map  = cor_map
+        self._dados   = dados
+        self._cor_map = cor_map
         if self._selected and self._selected not in dict(dados):
             self._selected = None
         self._atualizar_tabela()
         self._agendar_desenho()
 
     def limpar(self) -> None:
-        self._dados    = []
-        self._selected = None
+        self._dados       = []
+        self._selected    = None
         self._hovered_row = None
         for w in self._row_widgets:
             w.destroy()
@@ -164,7 +159,7 @@ class DonutChart(ctk.CTkFrame):
 
             if idx < len(self._row_widgets):
                 row = self._row_widgets[idx]
-                row._moeda = moeda
+                row._moeda     = moeda
                 row._bg_normal = bg_normal
                 row.lbl_nome.configure(text=f"■  {moeda.upper()}", text_color=cor)
                 row.lbl_pct.configure(text=f"{percentual:.2f}%")
@@ -177,9 +172,9 @@ class DonutChart(ctk.CTkFrame):
                     cursor="hand2",
                 )
                 row.pack(fill="x", pady=0)
-                
+
                 for i in range(3):
-                    row.columnconfigure(i, weight=1, uniform="leg_col")
+                    row.columnconfigure(i, weight=1, uniform="leg_col", minsize=_COL_MIN[i])
 
                 row._moeda     = moeda
                 row._bg_normal = bg_normal
@@ -188,29 +183,25 @@ class DonutChart(ctk.CTkFrame):
                     row, text=f"■  {moeda.upper()}", font=_FONT,
                     text_color=cor, fg_color="transparent", anchor="w", cursor="hand2",
                 )
-                row.lbl_nome.grid(row=0, column=0, sticky="ew", padx=6, pady=6)
+                row.lbl_nome.grid(row=0, column=0, sticky="ew", padx=6, pady=3)
 
                 row.lbl_pct = ctk.CTkLabel(
-                    row, text=f"{percentual:.2f}   %", 
-                    font=_FONT,
-                    text_color=TEXT_PRIMARY,
-                    fg_color="transparent",
-                    anchor="w", 
-                    cursor="hand2",
+                    row, text=f"{percentual:.2f}   %", font=_FONT,
+                    text_color=TEXT_PRIMARY, fg_color="transparent", anchor="w", cursor="hand2",
                 )
-                row.lbl_pct.grid(row=0, column=1, sticky="ew", padx=(16, 12), pady=6)
-
+                row.lbl_pct.grid(row=0, column=1, sticky="ew", padx=(16, 12), pady=3)
 
                 row.lbl_qtd = ctk.CTkLabel(
                     row, text=qtd_str, font=_FONT,
                     text_color=TEXT_MUTED, fg_color="transparent", anchor="w", cursor="hand2",
                 )
-                row.lbl_qtd.grid(row=0, column=2, sticky="ew", padx=6, pady=6)
+                row.lbl_qtd.grid(row=0, column=2, sticky="ew", padx=6, pady=3)
+
+                row.bind("<Button-1>", lambda e, r=row: self._toggle_selecao(r._moeda))
 
                 for widget in (row, row.lbl_nome, row.lbl_pct, row.lbl_qtd):
-                    widget.bind("<Button-1>", lambda e, r=row: self._toggle_selecao(r._moeda))
-                    widget.bind("<Enter>",    lambda e, r=row: self._hover_row(r._moeda, True))
-                    widget.bind("<Leave>",    lambda e, r=row: self._hover_row(r._moeda, False))
+                    widget.bind("<Enter>", lambda e, r=row: self._hover_row(r._moeda, True))
+                    widget.bind("<Leave>", lambda e, r=row: self._hover_row(r._moeda, False))
 
                 self._bind_scroll_row(row)
                 self._row_widgets.append(row)
@@ -237,7 +228,6 @@ class DonutChart(ctk.CTkFrame):
         else:
             if self._hovered_row == moeda:
                 self._hovered_row = None
-        
         self._aplicar_selecao()
         self._agendar_desenho()
 
@@ -246,7 +236,7 @@ class DonutChart(ctk.CTkFrame):
             if row._moeda == self._selected:
                 row.configure(fg_color=_SEL_BG)
             elif row._moeda == self._hovered_row:
-                 row.configure(fg_color=_HOVER_BG)
+                row.configure(fg_color=_HOVER_BG)
             else:
                 row.configure(fg_color=row._bg_normal)
 
@@ -256,7 +246,7 @@ class DonutChart(ctk.CTkFrame):
     def _get_bar_rects(self):
         if not self._dados:
             return []
-            
+
         w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
         if w < 50 or h < 50:
             return []
@@ -272,37 +262,34 @@ class DonutChart(ctk.CTkFrame):
         n_ativos   = len(self._dados)
         slot_width = (w - 2 * pad_x) / max(n_ativos, 1)
         bar_width  = min(slot_width * 0.68, 56)
-        
+
         rects = []
         for i, (moeda, d) in enumerate(self._dados):
             pct = d.get("percentual", 0)
-            cx = pad_x + (i * slot_width) + (slot_width / 2)
-            x1 = cx - bar_width / 2
-            x2 = cx + bar_width / 2
+            cx  = pad_x + (i * slot_width) + (slot_width / 2)
+            x1  = cx - bar_width / 2
+            x2  = cx + bar_width / 2
             bar_h = (pct / max_pct) * area_h
-            y1 = y_base - bar_h
-            y2 = y_base
+            y1  = y_base - bar_h
+            y2  = y_base
             rects.append((moeda, x1, y1, x2, y2))
-            
+
         return rects
 
     def _on_canvas_motion(self, event):
-        rects = self._get_bar_rects()
+        rects   = self._get_bar_rects()
         hovered = None
         for moeda, x1, y1, x2, y2 in rects:
             if x1 <= event.x <= x2 and y1 <= event.y <= y2:
                 hovered = moeda
                 break
-                
+
         if hovered != self._hovered_row:
             self._hovered_row = hovered
             self._aplicar_selecao()
             self._agendar_desenho()
-            
-        if hovered:
-            self.canvas.config(cursor="hand2")
-        else:
-            self.canvas.config(cursor="")
+
+        self.canvas.config(cursor="hand2" if hovered else "")
 
     def _on_canvas_leave(self, event):
         if self._hovered_row is not None:
@@ -312,15 +299,20 @@ class DonutChart(ctk.CTkFrame):
         self.canvas.config(cursor="")
 
     def _on_canvas_click(self, event):
-        rects = self._get_bar_rects()
+        rects   = self._get_bar_rects()
         clicked = None
         for moeda, x1, y1, x2, y2 in rects:
             if x1 <= event.x <= x2 and y1 <= event.y <= y2:
                 clicked = moeda
                 break
-                
+
         if clicked:
             self._toggle_selecao(clicked)
+        else:
+            if self._selected is not None:
+                self._selected = None
+                self._aplicar_selecao()
+                self._agendar_desenho()
 
     def _agendar_desenho(self) -> None:
         if self._draw_job is not None:
@@ -389,8 +381,8 @@ class DonutChart(ctk.CTkFrame):
         )
 
         for i, (moeda, d) in enumerate(self._dados):
-            pct         = d.get("percentual", 0)
-            cor_base    = self._cor_map.get(moeda, TEXT_MUTED)
+            pct      = d.get("percentual", 0)
+            cor_base = self._cor_map.get(moeda, TEXT_MUTED)
 
             if self._selected is not None:
                 if self._selected == moeda:
@@ -399,16 +391,15 @@ class DonutChart(ctk.CTkFrame):
                     cor = _alpha_blend(cor_base, BG_CARD, 0.25)
             else:
                 if self._hovered_row is not None and self._hovered_row != moeda:
-                     cor = _alpha_blend(cor_base, BG_CARD, 0.4)
+                    cor = _alpha_blend(cor_base, BG_CARD, 0.4)
                 elif self._hovered_row == moeda:
-                     cor = _lighten(cor_base, 0.2)
+                    cor = _lighten(cor_base, 0.2)
                 else:
                     cor = cor_base
 
-            cx = pad_x + (i * slot_width) + (slot_width / 2)
-            x1 = cx - bar_width / 2
-            x2 = cx + bar_width / 2
-
+            cx    = pad_x + (i * slot_width) + (slot_width / 2)
+            x1    = cx - bar_width / 2
+            x2    = cx + bar_width / 2
             bar_h = (pct / max_pct) * area_h
             y1    = y_base - bar_h
             y2    = y_base
@@ -417,17 +408,16 @@ class DonutChart(ctk.CTkFrame):
                 self._barra_arredondada(x1, y1, x2, y2, radius, cor)
 
             if slot_width >= 25:
-                
                 txt_color_moeda = TEXT_SECONDARY
-                txt_color_pct = TEXT_PRIMARY
-                
+                txt_color_pct   = TEXT_PRIMARY
+
                 if self._selected is not None and self._selected != moeda:
                     txt_color_moeda = TEXT_MUTED
-                    txt_color_pct = TEXT_MUTED
+                    txt_color_pct   = TEXT_MUTED
                 elif self._hovered_row is not None and self._hovered_row != moeda and self._selected is None:
                     txt_color_moeda = TEXT_MUTED
-                    txt_color_pct = TEXT_MUTED
-                    
+                    txt_color_pct   = TEXT_MUTED
+
                 self.canvas.create_text(
                     cx, y2 + 16,
                     text=moeda.upper(),
@@ -436,9 +426,9 @@ class DonutChart(ctk.CTkFrame):
                 )
 
                 if pct > 0:
-                        self.canvas.create_text(
-                            cx, y1 - 12,
-                            text=f"{pct:.1f}%",
-                            fill=txt_color_pct,
-                            font=("Segoe UI", 9, "bold"),
-                        )
+                    self.canvas.create_text(
+                        cx, y1 - 12,
+                        text=f"{pct:.1f}%",
+                        fill=txt_color_pct,
+                        font=("Segoe UI", 9, "bold"),
+                    )
