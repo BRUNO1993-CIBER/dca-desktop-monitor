@@ -40,8 +40,6 @@ def _f(t: tuple) -> ctk.CTkFont:
 
 class JanelaEdicao(ctk.CTkFrame):
 
-    _CAMPOS_EDITAVEIS = {"Data", "Taxa_BRL", "Operacao"}
-
     def __init__(
         self,
         parent: Any,
@@ -158,14 +156,11 @@ class JanelaEdicao(ctk.CTkFrame):
         self._campos: dict = {}
 
         for i, col in enumerate(self._data_manager.headers):
-            is_edit  = col in self._CAMPOS_EDITAVEIS
-            lbl_cor  = TEXT_PRIMARY if is_edit else TEXT_SECONDARY
-
             ctk.CTkLabel(
                 form,
                 text=col,
                 font=_f(_F_TREE_HEAD),
-                text_color=lbl_cor,
+                text_color=TEXT_PRIMARY,
                 fg_color=BG_CARD,
             ).grid(row=0, column=i, padx=10, pady=(0, 4), sticky="w")
 
@@ -181,6 +176,18 @@ class JanelaEdicao(ctk.CTkFrame):
                     button_color=BTC_ORANGE,
                     dropdown_fg_color=BG_CARD,
                     text_color=TEXT_PRIMARY,
+                )
+            elif col == "Moeda":
+                widget = ctk.CTkEntry(
+                    form,
+                    width=160,
+                    font=_f(_F_CARD_VAL),
+                    fg_color="#2a2a2a",
+                    text_color=TEXT_SECONDARY,
+                    border_color=BORDER,
+                    border_width=1,
+                    justify="center",
+                    state="disabled",
                 )
             else:
                 widget = ctk.CTkEntry(
@@ -198,25 +205,37 @@ class JanelaEdicao(ctk.CTkFrame):
             self._campos[col] = widget
 
     def _build_obs(self) -> None:
-        obs = ctk.CTkFrame(self, fg_color=BG_CARD, border_color=BORDER, border_width=1)
+        obs = ctk.CTkFrame(self, fg_color="#1f1208", border_color="#7a4200", border_width=1)
         obs.pack(fill="x", padx=10, pady=(0, 4))
 
-        primeira = "🚨  SOMENTE A DATA, A TAXA BRL E A OPERACAO PODEM SER CORRIGIDAS AQUI."
-        restante = (
-            "Para ajustar moeda, valor, preço ou qualquer outro dado, exclua esta transação "
-            "e a reinsira com as informações corretas — isso garante que todos os cálculos "
-            "de quantidade, custo médio e P&L permaneçam precisos e consistentes."
+        linha1 = "⚠️  ATENÇÃO — EDIÇÃO MANUAL COM IMPACTO DIRETO NOS CÁLCULOS"
+        linha2 = (
+            "O campo Moeda está bloqueado e não pode ser alterado: ele é usado diretamente pela API da Binance "
+            "para buscar cotações em tempo real — alterá-lo quebraria a busca de preços e corromperia todo o histórico "
+            "dessa posição. Caso precise corrigir a moeda, exclua a transação e registre-a novamente. "
+            "Os demais campos estão disponíveis para edição direta, porém Quantidade, Preço de Compra e Valor Total "
+            "são interdependentes: o sistema não recalcula automaticamente os demais ao alterar um deles. "
+            "Modificações inconsistentes entre esses valores comprometerão a precisão do DCA (Custo Médio) e do P&L realizado."
         )
 
         ctk.CTkLabel(
             obs,
-            text=f"{primeira}\n{restante}",
+            text=linha1,
+            font=_f(_F_CARD_TITLE),
+            text_color=BTC_ORANGE,
+            fg_color="#1f1208",
+            anchor="w",
+        ).pack(fill="x", padx=10, pady=(8, 2))
+
+        ctk.CTkLabel(
+            obs,
+            text=linha2,
             font=_f(_F_CARD_SUB),
             text_color=TEXT_SECONDARY,
-            fg_color=BG_CARD,
+            fg_color="#1f1208",
             wraplength=900,
             justify="left",
-        ).pack(fill="x", padx=10, pady=5)
+        ).pack(fill="x", padx=10, pady=(0, 8))
 
     def _build_buttons(self) -> None:
         btn_frame = ctk.CTkFrame(self, fg_color=BG_SURFACE)
@@ -347,18 +366,20 @@ class JanelaEdicao(ctk.CTkFrame):
 
         for col, valor in zip(self._data_manager.headers, valores):
             widget = self._campos[col]
-            is_edit = col in self._CAMPOS_EDITAVEIS
 
             if isinstance(widget, ctk.CTkComboBox):
                 widget.configure(state="readonly")
                 widget.set(valor)
+            elif col == "Moeda":
+                widget.configure(state="normal")
+                widget.delete(0, "end")
+                widget.insert(0, valor)
+                widget.configure(state="disabled")
             else:
                 widget.configure(state="normal")
                 valor_fmt = f"{float(valor):.2f}" if col == "Taxa_BRL" and valor != "" else valor
                 widget.delete(0, "end")
                 widget.insert(0, valor_fmt)
-                if not is_edit:
-                    widget.configure(state="readonly")
 
     def _salvar_edicao(self) -> None:
         if self._indice_editando is None or self._op_original is None:
@@ -386,12 +407,15 @@ class JanelaEdicao(ctk.CTkFrame):
                 messagebox.showerror("Erro", "Selecione uma operação (compra ou venda).")
                 return
 
-            nova_op = {
-                **self._op_original,
-                "Data": nova_data,
-                "Taxa_BRL": taxa_brl,
-                "Operacao": nova_operacao,
-            }
+            nova_op = {**self._op_original}
+            for col in self._data_manager.headers:
+                widget = self._campos[col]
+                if isinstance(widget, ctk.CTkComboBox):
+                    nova_op[col] = widget.get().strip()
+                else:
+                    nova_op[col] = widget.get().strip()
+
+            nova_op["Taxa_BRL"] = taxa_brl
 
             if self._data_manager.atualizar_operacao(self._indice_editando, nova_op):
                 messagebox.showinfo("Sucesso", "Transação atualizada com sucesso!")
@@ -424,6 +448,10 @@ class JanelaEdicao(ctk.CTkFrame):
             if isinstance(widget, ctk.CTkComboBox):
                 widget.configure(state="readonly")
                 widget.set("")
+            elif col == "Moeda":
+                widget.configure(state="normal")
+                widget.delete(0, "end")
+                widget.configure(state="disabled")
             else:
                 widget.configure(state="normal")
                 widget.delete(0, "end")
