@@ -27,6 +27,8 @@ _SEL_BG     = "#1A3A5C"
 _SEL_GLOW   = "#4A9EFF"
 _HOVER_BG   = "#1E2D3D"
 
+_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+
 _CORES_ATIVOS   = ["#f7931a", "#58a6ff", "#00ff88", "#e3b341", "#a371f7",
                    "#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ff9ff3"]
 _DIVERSIFICACAO = [(7, "🟢 Excelente", NEON_GREEN), (4, "🟡 Moderada", YELLOW),
@@ -55,6 +57,8 @@ class JanelaDistribuicao(ctk.CTkFrame):
 
         self._estado_conexao = "offline"
         self._countdown_seg  = 0
+        self._spinner_job    = None
+        self._spinner_idx    = 0
 
         self._det_rows: list = []
         self._det_sel: Optional[ctk.CTkFrame] = None  
@@ -67,30 +71,35 @@ class JanelaDistribuicao(ctk.CTkFrame):
         self.pack(fill="both", expand=True, padx=10, pady=10)
 
         toolbar = ctk.CTkFrame(self, fg_color="transparent")
-        toolbar.pack(fill="x", pady=(10, 10))
+        toolbar.pack(fill="x", pady=(3, 3))
+
+        self.badge_conexao = ctk.CTkFrame(toolbar, fg_color=BG_CARD, border_color=BORDER, border_width=1, corner_radius=8)
+        self.badge_conexao.pack(side=tk.LEFT, padx=(0, 5))
 
         ctk.CTkCheckBox(
             toolbar, text="Exibir em BRL", variable=self.brl_toggle_var,
             command=self.toggle_currency,
             fg_color=BTC_ORANGE, hover_color="#e8820f", border_color=BORDER,
             text_color=TEXT_PRIMARY, checkmark_color=BG_DEEP, font=_F_BADGE,
-        ).pack(side=tk.LEFT, padx=5)
+        ).pack(side=tk.RIGHT, padx=5)
 
-        self.badge_conexao = ctk.CTkFrame(toolbar, fg_color=BG_CARD, border_color=BORDER, border_width=1, corner_radius=6)
-        self.badge_conexao.pack(side=tk.RIGHT, padx=(0, 5))
         self.lbl_badge_icon = ctk.CTkLabel(self.badge_conexao, text="🟢", font=_F_BADGE, text_color=NEON_GREEN, fg_color="transparent")
-        self.lbl_badge_icon.pack(side=tk.LEFT, padx=(10, 6), pady=4)
-        self.lbl_badge_texto = ctk.CTkLabel(self.badge_conexao, text="Conectado", font=_F_BADGE, text_color=TEXT_PRIMARY, fg_color="transparent")
-        self.lbl_badge_texto.pack(side=tk.LEFT, padx=(0, 12), pady=4)
+        self.lbl_badge_icon.pack(side=tk.LEFT, padx=(10, 4), pady=5)
+
+        self.lbl_badge_spinner = ctk.CTkLabel(self.badge_conexao, text="", font=_F_BADGE, text_color=YELLOW, fg_color="transparent", width=16)
+        self.lbl_badge_spinner.pack(side=tk.LEFT, padx=(0, 4), pady=5)
+
+        self.lbl_badge_texto = ctk.CTkLabel(self.badge_conexao, text="Conectado à Binance", font=_F_BADGE, text_color=TEXT_PRIMARY, fg_color="transparent")
+        self.lbl_badge_texto.pack(side=tk.LEFT, padx=(0, 12), pady=5)
 
         cards_outer = ctk.CTkFrame(self, fg_color="transparent")
-        cards_outer.pack(fill="x", pady=(0, 2))
+        cards_outer.pack(fill="x", pady=(10, 10))
         for col in range(5):
             cards_outer.columnconfigure(col, weight=1)
 
         def _card(row, col, titulo, subtitulo, cor):
             frame = ctk.CTkFrame(cards_outer, fg_color=BG_CARD, border_color=BORDER, border_width=1, corner_radius=8)
-            frame.grid(row=row, column=col, sticky="nsew", padx=5, pady=2)
+            frame.grid(row=row, column=col, sticky="nsew", padx=6, pady=5)
             ctk.CTkLabel(frame, text=titulo, font=_F_CARD_TITLE, text_color=TEXT_SECONDARY, fg_color="transparent").pack(fill="x", pady=(4, 0), padx=10)
             ctk.CTkLabel(frame, text=subtitulo, font=_F_CARD_SUB, text_color=TEXT_MUTED, fg_color="transparent").pack(fill="x", padx=10)
             lbl = ctk.CTkLabel(frame, text="--", font=_F_CARD_VAL, text_color=cor, fg_color="transparent")
@@ -426,19 +435,39 @@ class JanelaDistribuicao(ctk.CTkFrame):
 
     def _render_badge(self):
         if self._estado_conexao == "conectado":
-            icon, cor, txt = "🟢", NEON_GREEN, "Conectado"
-            if self._countdown_seg > 0:
-                txt = f"Conectado · próx. atualização em {self._countdown_seg}s"
+            icon, cor, txt = "🟢", NEON_GREEN, "Conectado à Binance"
+            self._stop_spinner()
         elif self._estado_conexao == "sincronizando":
-            icon, cor, txt = "🟡", YELLOW, "Sincronizando..."
+            icon, cor, txt = "🟡", YELLOW, "Sincronizando"
+            self._start_spinner()
         elif self._estado_conexao == "offline":
-            icon, cor, txt = "🔴", NEON_RED, "Sem conexão"
-            if self._countdown_seg > 0:
-                txt = f"Sem conexão · tentando em {self._countdown_seg}s"
+            icon, cor, txt = "🔴", NEON_RED, "API Binance Offline"
+            self._stop_spinner()
         else:
             icon, cor, txt = "⚪", TEXT_MUTED, "—"
+            self._stop_spinner()
         self.lbl_badge_icon.configure(text=icon, text_color=cor)
-        self.lbl_badge_texto.configure(text=txt)
+        self.lbl_badge_texto.configure(text=txt, text_color=TEXT_PRIMARY)
+
+    def _start_spinner(self):
+        if self._spinner_job is not None:
+            return
+        self._spinner_idx = 0
+        self._tick_spinner()
+
+    def _stop_spinner(self):
+        if self._spinner_job is not None:
+            self.after_cancel(self._spinner_job)
+            self._spinner_job = None
+        self.lbl_badge_spinner.configure(text="")
+
+    def _tick_spinner(self):
+        if self._estado_conexao != "sincronizando":
+            self._stop_spinner()
+            return
+        self.lbl_badge_spinner.configure(text=_SPINNER_FRAMES[self._spinner_idx % len(_SPINNER_FRAMES)])
+        self._spinner_idx += 1
+        self._spinner_job = self.after(100, self._tick_spinner)
 
     def set_estado(self, estado: str) -> None:
         self._estado_conexao = estado
