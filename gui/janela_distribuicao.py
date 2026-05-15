@@ -68,20 +68,20 @@ class JanelaDistribuicao(ctk.CTkFrame):
         self._build_ui()
 
     def _build_ui(self):
-        self.pack(fill="both", expand=True, padx=10, pady=10)
+        self.pack(fill="both", expand=True, padx=10, pady=(3, 10))
 
         toolbar = ctk.CTkFrame(self, fg_color="transparent")
-        toolbar.pack(fill="x", pady=(3, 3))
+        toolbar.pack(fill="x", pady=(2, 2))
 
         self.badge_conexao = ctk.CTkFrame(toolbar, fg_color=BG_CARD, border_color=BORDER, border_width=1, corner_radius=8)
-        self.badge_conexao.pack(side=tk.LEFT, padx=(0, 5))
+        self.badge_conexao.pack(side=tk.LEFT, padx=(6, 5))
 
         ctk.CTkCheckBox(
             toolbar, text="Exibir em BRL", variable=self.brl_toggle_var,
             command=self.toggle_currency,
             fg_color=BTC_ORANGE, hover_color="#e8820f", border_color=BORDER,
             text_color=TEXT_PRIMARY, checkmark_color=BG_DEEP, font=_F_BADGE,
-        ).pack(side=tk.RIGHT, padx=5)
+        ).pack(side=tk.RIGHT, padx=(5, 6))
 
         self.lbl_badge_icon = ctk.CTkLabel(self.badge_conexao, text="🟢", font=_F_BADGE, text_color=NEON_GREEN, fg_color="transparent")
         self.lbl_badge_icon.pack(side=tk.LEFT, padx=(10, 4), pady=5)
@@ -93,7 +93,7 @@ class JanelaDistribuicao(ctk.CTkFrame):
         self.lbl_badge_texto.pack(side=tk.LEFT, padx=(0, 12), pady=5)
 
         cards_outer = ctk.CTkFrame(self, fg_color="transparent")
-        cards_outer.pack(fill="x", pady=(10, 10))
+        cards_outer.pack(fill="x", pady=(4, 4))
         for col in range(5):
             cards_outer.columnconfigure(col, weight=1)
 
