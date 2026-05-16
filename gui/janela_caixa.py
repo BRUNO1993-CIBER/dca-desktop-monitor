@@ -3,10 +3,12 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
+
 # pyrefly: ignore [missing-import]
 import customtkinter as ctk
 
 _FONT = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+
 _F_STATUS     = (_FONT, 11)
 _F_BADGE      = (_FONT, 11, "bold")
 _F_SECAO      = (_FONT, 12, "bold")
@@ -31,16 +33,44 @@ TEXT_PRIMARY   = "#e6edf3"
 TEXT_SECONDARY = "#8b949e"
 TEXT_MUTED     = "#484f58"
 
+_CARD_DEFS = [
+    ("depositos", "↓  Depósitos USDT", NEON_GREEN),
+    ("saques",    "↑  Saques USDT",    NEON_RED),
+    ("compras",   "🛒  Compras Cripto", BTC_ORANGE),
+    ("vendas",    "💱  Vendas Cripto",  CYAN),
+]
+
+_TIPO_MAP = {
+    "deposito_usdt": ("Depósito USDT", "deposito", "deposito_alt"),
+    "saque_usdt":    ("Saque USDT",    "saque",    "saque_alt"),
+    "compra_crypto": ("Compra Cripto", "compra",   "compra_alt"),
+    "venda_crypto":  ("Venda Cripto",  "venda",    "venda_alt"),
+}
+
+_TREE_COLS = ("Data", "Tipo", "Descrição", "Saldo Atualizado")
+
+_TREE_TAGS = {
+    "deposito":     (NEON_GREEN,     BG_CARD),
+    "deposito_alt": (NEON_GREEN,     BG_INPUT),
+    "saque":        (NEON_RED,       BG_CARD),
+    "saque_alt":    (NEON_RED,       BG_INPUT),
+    "compra":       (BTC_ORANGE,     BG_CARD),
+    "compra_alt":   (BTC_ORANGE,     BG_INPUT),
+    "venda":        (CYAN,           BG_CARD),
+    "venda_alt":    (CYAN,           BG_INPUT),
+    "vazio":        (TEXT_SECONDARY, BG_CARD),
+}
+
 
 class JanelaCaixa(ctk.CTkFrame):
     def __init__(self, parent, data_manager, price_manager, analysis_engine):
         super().__init__(parent, fg_color=BG_DEEP, corner_radius=0)
-        self._data_manager = data_manager
+        self._data_manager  = data_manager
         self._price_manager = price_manager
-        self._engine = analysis_engine
-        self.display_currency = "USD"
-        self.brl_toggle_var = tk.BooleanVar(value=False)
-        self._cards = {}
+        self._engine        = analysis_engine
+        self.display_currency  = "USD"
+        self.brl_toggle_var    = tk.BooleanVar(value=False)
+        self._cards            = {}
         self._build_ui()
         self._bind_tab_select(parent)
 
@@ -51,28 +81,35 @@ class JanelaCaixa(ctk.CTkFrame):
             pass
 
     def _on_tab_changed(self, event):
-        notebook = event.widget
         try:
-            selected = notebook.select()
-            if notebook.nametowidget(selected) is self:
+            selected = event.widget.select()
+            if event.widget.nametowidget(selected) is self:
                 self.atualizar()
         except Exception:
             pass
 
     def _build_ui(self):
         self.pack(fill="both", expand=True)
+        self._build_hero()
+        self._build_accent_divider(self)
+        self._build_cards()
+        self._build_table()
+        self._build_footer()
 
+    def _build_hero(self):
         hero = ctk.CTkFrame(self, fg_color=BG_SURFACE, corner_radius=0)
         hero.pack(fill="x")
 
-        accent_top = ctk.CTkFrame(hero, fg_color=BTC_ORANGE, height=2, corner_radius=0)
-        accent_top.pack(fill="x")
-        accent_top.pack_propagate(False)
+        self._accent_bar(hero)
 
-        inner_hero = ctk.CTkFrame(hero, fg_color=BG_SURFACE, corner_radius=0)
-        inner_hero.pack(fill="x", padx=30, pady=(18, 16))
+        inner = ctk.CTkFrame(hero, fg_color=BG_SURFACE, corner_radius=0)
+        inner.pack(fill="x", padx=30, pady=(18, 16))
 
-        left = ctk.CTkFrame(inner_hero, fg_color=BG_SURFACE, corner_radius=0)
+        self._build_hero_left(inner)
+        self._build_hero_right(inner)
+
+    def _build_hero_left(self, parent):
+        left = ctk.CTkFrame(parent, fg_color=BG_SURFACE, corner_radius=0)
         left.pack(side=tk.LEFT, fill="both", expand=True)
 
         ctk.CTkLabel(
@@ -92,7 +129,8 @@ class JanelaCaixa(ctk.CTkFrame):
         )
         self.lbl_saldo.pack(anchor="w", pady=(4, 0))
 
-        right = ctk.CTkFrame(inner_hero, fg_color=BG_SURFACE, corner_radius=0)
+    def _build_hero_right(self, parent):
+        right = ctk.CTkFrame(parent, fg_color=BG_SURFACE, corner_radius=0)
         right.pack(side=tk.RIGHT, anchor="center")
 
         toggle_frame = ctk.CTkFrame(
@@ -108,7 +146,7 @@ class JanelaCaixa(ctk.CTkFrame):
             toggle_frame,
             text="Exibir em BRL",
             font=ctk.CTkFont(*_F_BADGE),
-            text_color=TEXT_PRIMARY,
+            text_color=TEXT_PRIMARY, cursor="hand2",
         ).pack(side=tk.LEFT, padx=(14, 6), pady=10)
 
         ctk.CTkCheckBox(
@@ -123,6 +161,7 @@ class JanelaCaixa(ctk.CTkFrame):
             border_color=BORDER,
             corner_radius=4,
             width=0,
+            cursor="hand2",
         ).pack(side=tk.LEFT, padx=(0, 14), pady=10)
 
         self.lbl_status = ctk.CTkLabel(
@@ -134,112 +173,14 @@ class JanelaCaixa(ctk.CTkFrame):
         )
         self.lbl_status.pack(anchor="e", pady=(8, 0))
 
-        accent_mid = ctk.CTkFrame(self, fg_color=BTC_ORANGE, height=2, corner_radius=0)
-        accent_mid.pack(fill="x")
-        accent_mid.pack_propagate(False)
+    def _build_cards(self):
+        frame = ctk.CTkFrame(self, fg_color=BG_DEEP, corner_radius=0)
+        frame.pack(fill="x", padx=30, pady=(20, 6))
 
-        cards_frame = ctk.CTkFrame(self, fg_color=BG_DEEP, corner_radius=0)
-        cards_frame.pack(fill="x", padx=30, pady=(20, 6))
-
-        card_defs = [
-            ("depositos", "↓  Depósitos USDT", NEON_GREEN),
-            ("saques",    "↑  Saques USDT",    NEON_RED),
-            ("compras",   "🛒  Compras Cripto", BTC_ORANGE),
-            ("vendas",    "💱  Vendas Cripto",  CYAN),
-        ]
-        for key, label, cor in card_defs:
-            card = self._make_card(cards_frame, label, "--", cor)
+        for key, label, cor in _CARD_DEFS:
+            card = self._make_card(frame, label, "--", cor)
             card.pack(side=tk.LEFT, padx=(0, 12), fill="x", expand=True)
             self._cards[key] = card
-
-        table_outer = ctk.CTkFrame(self, fg_color=BG_DEEP, corner_radius=0)
-        table_outer.pack(fill="both", expand=True, padx=30, pady=(4, 10))
-
-        sec_header = ctk.CTkFrame(table_outer, fg_color=BG_DEEP, corner_radius=0)
-        sec_header.pack(fill="x", pady=(0, 8))
-
-        ctk.CTkLabel(
-            sec_header,
-            text="EXTRATO DE MOVIMENTAÇÕES",
-            font=ctk.CTkFont(*_F_SECAO),
-            text_color=TEXT_SECONDARY,
-        ).pack(side=tk.LEFT)
-
-        sep = ctk.CTkFrame(sec_header, fg_color=BORDER, height=1, corner_radius=0)
-        sep.pack(side=tk.LEFT, fill="x", expand=True, padx=(14, 0))
-
-        tree_border = tk.Frame(table_outer, bg=BORDER, padx=1, pady=1)
-        tree_border.pack(fill="both", expand=True)
-
-        tree_container = tk.Frame(tree_border, bg=BG_CARD)
-        tree_container.pack(fill="both", expand=True)
-
-        style = ttk.Style()
-        style.configure(
-            "Caixa.Treeview",
-            background=BG_CARD,
-            fieldbackground=BG_CARD,
-            foreground=TEXT_PRIMARY,
-            rowheight=36,
-            borderwidth=0,
-            relief="flat",
-            font=_F_TREE,
-        )
-        style.configure(
-            "Caixa.Treeview.Heading",
-            background=BG_INPUT,
-            foreground=TEXT_SECONDARY,
-            font=_F_TREE_HEAD,
-            relief="flat",
-            borderwidth=0,
-        )
-        style.map("Caixa.Treeview", background=[("selected", BTC_ORANGE)])
-        style.layout("Caixa.Treeview", [("Treeview.treearea", {"sticky": "nswe"})])
-
-        cols = ("Data", "Tipo", "Descrição", "Saldo Atualizado")
-        self.tree = ttk.Treeview(
-            tree_container,
-            columns=cols,
-            show="headings",
-            selectmode="none",
-            style="Caixa.Treeview",
-        )
-
-        self.tree.heading("Data",             text="DATA",             anchor="center")
-        self.tree.heading("Tipo",             text="TIPO",             anchor="center")
-        self.tree.heading("Descrição",        text="DESCRIÇÃO",        anchor="w")
-        self.tree.heading("Saldo Atualizado", text="SALDO ATUALIZADO", anchor="center")
-
-        self.tree.column("Data",             width=165, anchor="center", stretch=False)
-        self.tree.column("Tipo",             width=155, anchor="center", stretch=False)
-        self.tree.column("Descrição",        width=400, anchor="w",      stretch=True)
-        self.tree.column("Saldo Atualizado", width=185, anchor="center", stretch=False)
-
-        self.tree.tag_configure("deposito",     foreground=NEON_GREEN,     background=BG_CARD)
-        self.tree.tag_configure("deposito_alt", foreground=NEON_GREEN,     background=BG_INPUT)
-        self.tree.tag_configure("saque",        foreground=NEON_RED,       background=BG_CARD)
-        self.tree.tag_configure("saque_alt",    foreground=NEON_RED,       background=BG_INPUT)
-        self.tree.tag_configure("compra",       foreground=BTC_ORANGE,     background=BG_CARD)
-        self.tree.tag_configure("compra_alt",   foreground=BTC_ORANGE,     background=BG_INPUT)
-        self.tree.tag_configure("venda",        foreground=CYAN,           background=BG_CARD)
-        self.tree.tag_configure("venda_alt",    foreground=CYAN,           background=BG_INPUT)
-        self.tree.tag_configure("vazio",        foreground=TEXT_SECONDARY, background=BG_CARD)
-
-        sb = ttk.Scrollbar(tree_container, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=sb.set)
-        sb.pack(side=tk.RIGHT, fill="y")
-        self.tree.pack(fill="both", expand=True)
-
-        footer_sep = ctk.CTkFrame(self, fg_color=BORDER, height=1, corner_radius=0)
-        footer_sep.pack(fill="x", side=tk.BOTTOM)
-        footer_sep.pack_propagate(False)
-
-        ctk.CTkLabel(
-            self,
-            text="Atualização automática ao acessar a aba",
-            font=ctk.CTkFont(_FONT, 11, "normal"),
-            text_color=TEXT_MUTED,
-        ).pack(side=tk.BOTTOM, pady=6)
 
     def _make_card(self, parent, titulo, valor, cor):
         frame = ctk.CTkFrame(
@@ -273,6 +214,110 @@ class JanelaCaixa(ctk.CTkFrame):
             self._cards[key]._value_label.configure(text=valor)
         except Exception:
             pass
+
+    def _build_table(self):
+        outer = ctk.CTkFrame(self, fg_color=BG_DEEP, corner_radius=0)
+        outer.pack(fill="both", expand=True, padx=30, pady=(4, 10))
+
+        self._build_section_header(outer)
+        self._build_treeview(outer)
+
+    def _build_section_header(self, parent):
+        header = ctk.CTkFrame(parent, fg_color=BG_DEEP, corner_radius=0)
+        header.pack(fill="x", pady=(0, 8))
+
+        ctk.CTkLabel(
+            header,
+            text="EXTRATO DE MOVIMENTAÇÕES",
+            font=ctk.CTkFont(*_F_SECAO),
+            text_color=TEXT_SECONDARY,
+        ).pack(side=tk.LEFT)
+
+        ctk.CTkFrame(header, fg_color=BORDER, height=1, corner_radius=0).pack(
+            side=tk.LEFT, fill="x", expand=True, padx=(14, 0)
+        )
+
+    def _build_treeview(self, parent):
+        border_frame = tk.Frame(parent, bg=BORDER, padx=1, pady=1)
+        border_frame.pack(fill="both", expand=True)
+
+        container = tk.Frame(border_frame, bg=BG_CARD)
+        container.pack(fill="both", expand=True)
+
+        self._configure_tree_style()
+
+        self.tree = ttk.Treeview(
+            container,
+            columns=_TREE_COLS,
+            show="headings",
+            selectmode="none",
+            style="Caixa.Treeview",
+        )
+        self._configure_tree_columns()
+        self._configure_tree_tags()
+
+        sb = ttk.Scrollbar(container, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=sb.set)
+        sb.pack(side=tk.RIGHT, fill="y")
+        self.tree.pack(fill="both", expand=True)
+
+    def _configure_tree_style(self):
+        style = ttk.Style()
+        style.configure(
+            "Caixa.Treeview",
+            background=BG_CARD,
+            fieldbackground=BG_CARD,
+            foreground=TEXT_PRIMARY,
+            rowheight=36,
+            borderwidth=0,
+            relief="flat",
+            font=_F_TREE,
+        )
+        style.configure(
+            "Caixa.Treeview.Heading",
+            background=BG_INPUT,
+            foreground=TEXT_SECONDARY,
+            font=_F_TREE_HEAD,
+            relief="flat",
+            borderwidth=0,
+        )
+        style.map("Caixa.Treeview", background=[("selected", BTC_ORANGE)])
+        style.layout("Caixa.Treeview", [("Treeview.treearea", {"sticky": "nswe"})])
+
+    def _configure_tree_columns(self):
+        headings = {
+            "Data":             ("DATA",             "center", 165, False),
+            "Tipo":             ("TIPO",             "center", 155, False),
+            "Descrição":        ("DESCRIÇÃO",        "w",      400, True),
+            "Saldo Atualizado": ("SALDO ATUALIZADO", "center", 185, False),
+        }
+        for col, (text, anchor, width, stretch) in headings.items():
+            self.tree.heading(col, text=text, anchor=anchor if anchor != "w" else "w")
+            self.tree.column(col, width=width, anchor=anchor, stretch=stretch)
+
+    def _configure_tree_tags(self):
+        for tag, (fg, bg) in _TREE_TAGS.items():
+            self.tree.tag_configure(tag, foreground=fg, background=bg)
+
+    def _build_footer(self):
+        sep = ctk.CTkFrame(self, fg_color=BORDER, height=1, corner_radius=0)
+        sep.pack(fill="x", side=tk.BOTTOM)
+        sep.pack_propagate(False)
+
+        ctk.CTkLabel(
+            self,
+            text="Atualização automática ao acessar a aba",
+            font=ctk.CTkFont(_FONT, 11, "normal"),
+            text_color=TEXT_MUTED,
+        ).pack(side=tk.BOTTOM, pady=6)
+
+    def _accent_bar(self, parent):
+        bar = ctk.CTkFrame(parent, fg_color=BTC_ORANGE, height=2, corner_radius=0)
+        bar.pack(fill="x")
+        bar.pack_propagate(False)
+
+    def _build_accent_divider(self, parent):
+        self._accent_bar(parent)
 
     def toggle_currency(self):
         self.display_currency = "BRL" if self.brl_toggle_var.get() else "USD"
@@ -314,15 +359,22 @@ class JanelaCaixa(ctk.CTkFrame):
         self.lbl_saldo.configure(text=self._fmt_val(s_atual), text_color=cor_saldo)
         self.lbl_status.configure(text=f"✓ atualizado  {agora}", text_color=TEXT_SECONDARY)
 
-        depositos = sum(m["valor"] for m in hist if m.get("tipo") == "deposito_usdt") if hist else 0
-        saques    = sum(m["valor"] for m in hist if m.get("tipo") == "saque_usdt")    if hist else 0
-        compras   = sum(m["valor"] for m in hist if m.get("tipo") == "compra_crypto") if hist else 0
-        vendas    = sum(m["valor"] for m in hist if m.get("tipo") == "venda_crypto")  if hist else 0
+        totais = {
+            "deposito_usdt": 0,
+            "saque_usdt":    0,
+            "compra_crypto": 0,
+            "venda_crypto":  0,
+        }
+        if hist:
+            for m in hist:
+                tipo = m.get("tipo")
+                if tipo in totais:
+                    totais[tipo] += m["valor"]
 
-        self._set_card("depositos", self._fmt_val(depositos))
-        self._set_card("saques",    self._fmt_val(saques))
-        self._set_card("compras",   self._fmt_val(compras))
-        self._set_card("vendas",    self._fmt_val(vendas))
+        self._set_card("depositos", self._fmt_val(totais["deposito_usdt"]))
+        self._set_card("saques",    self._fmt_val(totais["saque_usdt"]))
+        self._set_card("compras",   self._fmt_val(totais["compra_crypto"]))
+        self._set_card("vendas",    self._fmt_val(totais["venda_crypto"]))
 
         if not hist:
             self.tree.insert("", "end",
@@ -330,18 +382,11 @@ class JanelaCaixa(ctk.CTkFrame):
                              tags=("vazio",))
             return
 
-        TIPO_MAP = {
-            "deposito_usdt": ("Depósito USDT", "deposito", "deposito_alt"),
-            "saque_usdt":    ("Saque USDT",    "saque",    "saque_alt"),
-            "compra_crypto": ("Compra Cripto", "compra",   "compra_alt"),
-            "venda_crypto":  ("Venda Cripto",  "venda",    "venda_alt"),
-        }
-
         for idx, mov in enumerate(reversed(hist)):
-            d     = datetime.strptime(mov["data"], "%Y-%m-%d %H:%M:%S").strftime("%d/%m/%Y  %H:%M")
-            tipo  = mov.get("tipo", "")
-            label, tag_par, tag_imp = TIPO_MAP.get(tipo, (tipo, "deposito", "deposito_alt"))
-            tag   = tag_par if idx % 2 == 0 else tag_imp
+            d                        = datetime.strptime(mov["data"], "%Y-%m-%d %H:%M:%S").strftime("%d/%m/%Y  %H:%M")
+            tipo                     = mov.get("tipo", "")
+            label, tag_par, tag_imp  = _TIPO_MAP.get(tipo, (tipo, "deposito", "deposito_alt"))
+            tag                      = tag_par if idx % 2 == 0 else tag_imp
             self.tree.insert(
                 "", "end",
                 values=(d, label, mov["descricao"], self._fmt_val(mov["saldo_apos"])),
