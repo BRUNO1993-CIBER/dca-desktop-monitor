@@ -82,7 +82,8 @@ class JanelaDistribuicao(ctk.CTkFrame):
             command=self.toggle_currency,
             fg_color=BTC_ORANGE, hover_color="#e8820f", border_color=BORDER,
             text_color=TEXT_PRIMARY, checkmark_color=BG_DEEP, font=_F_BADGE,
-        ).pack(side=tk.RIGHT, padx=(5, 6))
+            cursor="hand2",
+        ).pack(side=tk.LEFT, padx=(10, 0), pady=5)
 
         self.lbl_badge_icon = ctk.CTkLabel(
             self.badge_conexao, text="🟢", font=_F_BADGE,
