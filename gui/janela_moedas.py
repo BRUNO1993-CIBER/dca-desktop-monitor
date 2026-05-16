@@ -52,85 +52,110 @@ class JanelaMoedas(ctk.CTkFrame):
         self._carregar_moedas()
 
     def _construir_interface(self):
-        header = ctk.CTkFrame(self, fg_color=BG_DEEP)
-        header.pack(fill="x", padx=24, pady=(20, 0))
+            header = ctk.CTkFrame(self, fg_color=BG_DEEP)
+            header.pack(fill="x", padx=24, pady=(20, 0))
 
-        ctk.CTkLabel(
-            header,
-            text="⚙  Gerenciar Moedas",
-            font=_f(_F_TITULO),
-            text_color=BTC_ORANGE,
-            fg_color=BG_DEEP,
-        ).pack(side="left")
+            ctk.CTkLabel(
+                header,
+                text="⚙  Gerenciar Moedas",
+                font=_f(_F_TITULO),
+                text_color=BTC_ORANGE,
+                fg_color=BG_DEEP,
+            ).pack(side="left")
 
-        self._lbl_status = ctk.CTkLabel(
-            header,
-            text="",
-            font=_f(_F_STATUS),
-            text_color=NEON_GREEN,
-            fg_color=BG_DEEP,
-        )
-        self._lbl_status.pack(side="right", padx=8)
+            ctk.CTkFrame(self, fg_color=BTC_ORANGE, height=1).pack(fill="x", padx=24, pady=(8, 0))
 
-        ctk.CTkFrame(self, fg_color=BTC_ORANGE, height=1).pack(fill="x", padx=24, pady=(8, 16))
+            self._lbl_status = ctk.CTkLabel(
+                self,
+                text="",
+                font=_f(_F_STATUS),
+                text_color=NEON_GREEN,
+                fg_color=BG_DEEP,
+                anchor="center",
+                justify="center",
+            )
+            self._lbl_status.pack(fill="x", pady=(4, 8))
 
-        corpo = ctk.CTkFrame(self, fg_color=BG_DEEP)
-        corpo.pack(fill="both", expand=True, padx=24, pady=0)
-        corpo.columnconfigure(0, weight=3)
-        corpo.columnconfigure(1, weight=0)
-        corpo.columnconfigure(2, weight=2)
-        corpo.rowconfigure(0, weight=1)
+            corpo = ctk.CTkFrame(self, fg_color=BG_DEEP)
+            corpo.pack(fill="both", expand=True, padx=24, pady=0)
+            corpo.columnconfigure(0, weight=3)
+            corpo.columnconfigure(1, weight=2)
+            corpo.rowconfigure(0, weight=1)
 
-        self._construir_painel_lista(corpo)
-        self._construir_painel_controles(corpo)
-        self._construir_painel_add(corpo)
-        self._construir_rodape()
+            self._construir_painel_lista(corpo)
+            self._construir_painel_add(corpo)
+            self._construir_rodape()
 
     def _construir_painel_lista(self, parent):
-        card = ctk.CTkFrame(parent, fg_color=BG_CARD, border_color=BORDER_SUBTLE, border_width=1)
-        card.grid(row=0, column=0, sticky="nsew", padx=(0, 6), pady=0)
-        card.rowconfigure(1, weight=1)
-        card.columnconfigure(0, weight=1)
+            card = ctk.CTkFrame(parent, fg_color=BG_CARD, border_color=BORDER_SUBTLE, border_width=1)
+            card.grid(row=0, column=0, sticky="nsew", padx=(0, 6), pady=0)
+            card.rowconfigure(1, weight=1)
+            card.columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(
-            card,
-            text="Moedas Ativas",
-            font=_f(_F_SECAO),
-            text_color=TEXT_PRIMARY,
-            fg_color=BG_CARD,
-        ).grid(row=0, column=0, columnspan=2, sticky="ew", pady=10)
+            ctk.CTkLabel(
+                card,
+                text="Moedas Ativas",
+                font=_f(_F_SECAO),
+                text_color=TEXT_PRIMARY,
+                fg_color=BG_CARD,
+            ).grid(row=0, column=0, sticky="ew", pady=10)
 
-        ctk.CTkFrame(card, fg_color=BORDER_SUBTLE, height=1).grid(
-            row=0, column=0, columnspan=2, sticky="ew", pady=(36, 0)
-        )
+            ctk.CTkFrame(card, fg_color=BORDER_SUBTLE, height=1).grid(
+                row=0, column=0, sticky="ew", pady=(36, 0)
+            )
 
-        lista_frame = ctk.CTkFrame(card, fg_color=BG_CARD)
-        lista_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-        lista_frame.rowconfigure(0, weight=1)
-        lista_frame.columnconfigure(0, weight=1)
+            lista_frame = ctk.CTkFrame(card, fg_color=BG_CARD)
+            lista_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(10, 4))
+            lista_frame.rowconfigure(0, weight=1)
+            lista_frame.columnconfigure(0, weight=1)
 
-        self._listbox = ctk.CTkTextbox(
-            lista_frame,
-            fg_color=BG_INPUT,
-            text_color=TEXT_PRIMARY,
-            font=_f(_F_CARD_VAL),
-            activate_scrollbars=True,
-            state="disabled",
-        )
-        self._listbox.grid(row=0, column=0, sticky="nsew")
-        self._listbox._textbox.configure(cursor="hand2")
-        self._listbox.bind("<Button-1>", self._on_listbox_click)
+            self._listbox = ctk.CTkTextbox(
+                lista_frame,
+                fg_color=BG_INPUT,
+                text_color=TEXT_PRIMARY,
+                font=_f(_F_CARD_VAL),
+                activate_scrollbars=True,
+                state="disabled",
+            )
+            self._listbox.grid(row=0, column=0, sticky="nsew")
+            self._listbox._textbox.configure(cursor="hand2")
+            self._listbox.bind("<Button-1>", self._on_listbox_click)
 
-        self._lbl_total = ctk.CTkLabel(
-            card,
-            text="",
-            font=_f(_F_TREE),
-            text_color=TEXT_SECONDARY,
-            fg_color=BG_CARD,
-        )
-        self._lbl_total.grid(row=2, column=0, sticky="ew", pady=6)
+            btn_frame = ctk.CTkFrame(card, fg_color=BG_CARD)
+            btn_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=(0, 6))
 
-        self._selected_idx: int | None = None
+            botoes = [
+                ("▲ Subir",  self._mover_cima,   CYAN),
+                ("▼ Descer", self._mover_baixo,  CYAN),
+                ("⤒ Topo",   self._mover_topo,   CYAN),
+                ("⤓ Fim",    self._mover_fim,    CYAN),
+                ("✕ Remover", self._remover_moeda, RED_ALERT),
+            ]
+
+            for txt, cmd, cor in botoes:
+                ctk.CTkButton(
+                    btn_frame,
+                    text=txt,
+                    font=_f(_F_TREE_HEAD),
+                    fg_color=BG_INPUT,
+                    text_color=cor,
+                    hover_color=cor,
+                    border_width=0,
+                    cursor="hand2",
+                    height=30,
+                    command=cmd,
+                ).pack(side="left", padx=3, pady=4)
+
+            self._lbl_total = ctk.CTkLabel(
+                card,
+                text="",
+                font=_f(_F_TREE),
+                text_color=TEXT_SECONDARY,
+                fg_color=BG_CARD,
+            )
+            self._lbl_total.grid(row=3, column=0, sticky="ew", pady=(0, 6))
+
+            self._selected_idx: int | None = None
 
     def _on_listbox_click(self, event):
         widget = event.widget
@@ -150,44 +175,9 @@ class JanelaMoedas(ctk.CTkFrame):
             self._listbox.tag_config("selected", background=BTC_ORANGE, foreground="#000")
         self._listbox.configure(state="disabled")
 
-    def _construir_painel_controles(self, parent):
-        card = ctk.CTkFrame(parent, fg_color=BG_DEEP)
-        card.grid(row=0, column=1, sticky="ns", padx=6)
-
-        ctk.CTkFrame(card, fg_color=BG_DEEP).pack(expand=True, fill="both")
-
-        botoes = [
-            ("▲  Subir",   self._mover_cima,   CYAN),
-            ("▼  Descer",  self._mover_baixo,  CYAN),
-            ("⤒  Topo",    self._mover_topo,   CYAN),
-            ("⤓  Fim",     self._mover_fim,    CYAN),
-            (None,         None,               None),
-            ("✕  Remover", self._remover_moeda, RED_ALERT),
-        ]
-
-        for txt, cmd, cor in botoes:
-            if cmd is None:
-                ctk.CTkFrame(card, fg_color=BG_DEEP, height=14).pack()
-                continue
-            ctk.CTkButton(
-                card,
-                text=txt,
-                font=_f(_F_TREE_HEAD),
-                fg_color=BG_CARD,
-                text_color=cor,
-                hover_color=cor,
-                border_width=0,
-                cursor="hand2",
-                width=110,
-                height=32,
-                command=cmd,
-            ).pack(fill="x", pady=2)
-
-        ctk.CTkFrame(card, fg_color=BG_DEEP).pack(expand=True, fill="both")
-
     def _construir_painel_add(self, parent):
         card = ctk.CTkFrame(parent, fg_color=BG_CARD, border_color=BORDER_SUBTLE, border_width=1)
-        card.grid(row=0, column=2, sticky="nsew", padx=(6, 0))
+        card.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
 
         ctk.CTkLabel(
             card,
@@ -436,20 +426,24 @@ class JanelaMoedas(ctk.CTkFrame):
         self._mover(1)
 
     def _mover(self, delta: int):
-        if self._selected_idx is None:
-            return
-        idx  = self._selected_idx
-        novo = idx + delta
-        if novo < 0 or novo >= len(self._moedas):
-            return
-        self._moedas[idx], self._moedas[novo] = self._moedas[novo], self._moedas[idx]
-        self._selected_idx = novo
-        self._sync_listbox()
-        self._highlight_selected()
-        self._marcar_alterado(True)
+            if self._selected_idx is None:
+                self._set_status("Selecione uma moeda para mover.", YELLOW_WARN, autoapagar=True)
+                return
+            idx  = self._selected_idx
+            novo = idx + delta
+            if novo < 0 or novo >= len(self._moedas):
+                return
+            self._moedas[idx], self._moedas[novo] = self._moedas[novo], self._moedas[idx]
+            self._selected_idx = novo
+            self._sync_listbox()
+            self._highlight_selected()
+            self._marcar_alterado(True)
 
     def _mover_topo(self):
-        if self._selected_idx is None or self._selected_idx == 0:
+        if self._selected_idx is None:
+            self._set_status("Selecione uma moeda para mover.", YELLOW_WARN, autoapagar=True)
+            return
+        if self._selected_idx == 0:
             return
         idx = self._selected_idx
         self._moedas.insert(0, self._moedas.pop(idx))
@@ -459,7 +453,10 @@ class JanelaMoedas(ctk.CTkFrame):
         self._marcar_alterado(True)
 
     def _mover_fim(self):
-        if self._selected_idx is None or self._selected_idx == len(self._moedas) - 1:
+        if self._selected_idx is None:
+            self._set_status("Selecione uma moeda para mover.", YELLOW_WARN, autoapagar=True)
+            return
+        if self._selected_idx == len(self._moedas) - 1:
             return
         idx = self._selected_idx
         self._moedas.append(self._moedas.pop(idx))
