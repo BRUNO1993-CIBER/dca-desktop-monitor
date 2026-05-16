@@ -102,11 +102,12 @@ class JanelaDistribuicao(ctk.CTkFrame):
         )
         self.lbl_badge_texto.pack(side=tk.LEFT, padx=(0, 12), pady=5)
 
+
         content = ctk.CTkFrame(self, fg_color="transparent")
         content.pack(fill="both", expand=True)
-        content.columnconfigure(0, weight=1)
-        content.rowconfigure(0, weight=2)   
-        content.rowconfigure(1, weight=3)  
+        content.columnconfigure(0, weight=1)  
+        content.columnconfigure(1, weight=3)  
+        content.rowconfigure(0, weight=1)
 
         def _secao(parent, titulo: str, center: bool = False):
             outer = ctk.CTkFrame(
@@ -122,19 +123,8 @@ class JanelaDistribuicao(ctk.CTkFrame):
             inner.pack(fill="both", expand=True, padx=8, pady=(0, 8))
             return outer, inner
 
-        donut_outer, donut_inner = _secao(content, " Gráfico de Distribuição e Alocação ")
-        donut_outer.grid(row=0, column=0, sticky="nsew", padx=5, pady=(4, 6))
-        self.donut_chart = DonutChart(donut_inner)
-        self.donut_chart.pack(fill="both", expand=True)
-
-        bottom = ctk.CTkFrame(content, fg_color="transparent")
-        bottom.grid(row=1, column=0, sticky="nsew", padx=5)
-        bottom.rowconfigure(0, weight=1)
-        bottom.columnconfigure(0, weight=1)   # cards  ≈ 25 %
-        bottom.columnconfigure(1, weight=3)   # tabela ≈ 75 %
-
-        cards_outer, cards_inner = _secao(bottom, "📋 Resumo do Portfólio", center=True)
-        cards_outer.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        cards_outer, cards_inner = _secao(content, "📋 Resumo do Portfólio", center=True)
+        cards_outer.grid(row=0, column=0, sticky="nsew", padx=(5, 6), pady=(4, 0))
 
         painel = PainelCards(cards_inner)
         painel.pack(fill="both", expand=True)
@@ -150,8 +140,19 @@ class JanelaDistribuicao(ctk.CTkFrame):
         self._lbl_melhor     = painel.lbl_melhor
         self._lbl_pior       = painel.lbl_pior
 
-        detalhe_outer, detalhe_inner = _secao(bottom, " Análise Detalhada de P&L ")
-        detalhe_outer.grid(row=0, column=1, sticky="nsew")
+        right = ctk.CTkFrame(content, fg_color="transparent")
+        right.grid(row=0, column=1, sticky="nsew", padx=(0, 5), pady=(4, 0))
+        right.columnconfigure(0, weight=1)
+        right.rowconfigure(0, weight=2)   
+        right.rowconfigure(1, weight=3)   
+
+        donut_outer, donut_inner = _secao(right, " Gráfico de Distribuição e Alocação ")
+        donut_outer.grid(row=0, column=0, sticky="nsew", pady=(0, 6))
+        self.donut_chart = DonutChart(donut_inner)
+        self.donut_chart.pack(fill="both", expand=True)
+
+        detalhe_outer, detalhe_inner = _secao(right, " Análise Detalhada de P&L ")
+        detalhe_outer.grid(row=1, column=0, sticky="nsew")
 
         header = ctk.CTkFrame(detalhe_inner, fg_color=BG_DEEP, corner_radius=6)
         header.pack(fill="x", padx=(4, 16), pady=(0, 2))
