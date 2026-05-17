@@ -39,7 +39,7 @@ MOEDAS_SUPORTADAS = CONFIG["moedas"]
 
 ABAS = [
     ("📈  Dashboard Geral",      "aba_distribuicao"),
-    ("💰  Caixa (USDT)",         "aba_caixa"),
+    ("💰  Caixa (USD/BRL)",         "aba_caixa"),
     ("✏️  Registrar Operação",   "aba_registro"),
     ("⚙️  Histórico e Edição",   "aba_edicao"),
     ("🪙  Gerenciar Moedas",     "aba_moedas"),
@@ -140,7 +140,7 @@ class PortfolioDCA:
         _embutir(self.aba_distribuicao)
 
         self.aba_caixa = JanelaCaixa(
-            self.tabview.tab("💰  Caixa (USDT)"),
+            self.tabview.tab("💰  Caixa (USD/BRL)"),
             self.data_manager, self.price_manager, self.analysis_engine,
         )
         _embutir(self.aba_caixa)

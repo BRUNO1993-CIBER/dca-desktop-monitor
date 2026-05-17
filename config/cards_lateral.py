@@ -67,7 +67,7 @@ def _footer(parent: tk.Widget) -> None:
             c.create_line(0, y, w, y, fill=BORDER, width=1, dash=(2, 8))
 
         c.create_text(
-            w // 2, h // 2 + 2,
+            w // 2, h // 2 - 1,
             text="₿",
             font=(_FONT_NAME, 52, "bold"),
             fill=_lighten(BG_CARD, 0.18),
