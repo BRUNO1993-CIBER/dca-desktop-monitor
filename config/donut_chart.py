@@ -19,7 +19,7 @@ def _rgb_to_hex(r, g, b) -> str:
     return f"#{int(r):02x}{int(g):02x}{int(b):02x}"
 
 
-def _lighten(hex_color: str, factor: float = 0.35) -> str:
+def _lighten(hex_color: str, factor: float = 0.2) -> str:
     try:
         r, g, b = _hex_to_rgb(hex_color)
         r = min(255, int(r + (255 - r) * factor))
@@ -40,6 +40,9 @@ def _alpha_blend(hex_color: str, hex_bg: str, alpha: float) -> str:
         return _rgb_to_hex(r, g, b)
     except Exception:
         return hex_color
+
+
+_GRADIENT_STEPS = 24
 
 
 class DonutChart(ctk.CTkFrame):
@@ -100,13 +103,13 @@ class DonutChart(ctk.CTkFrame):
 
         rects = []
         for i, (moeda, d) in enumerate(self._dados):
-            pct = d.get("percentual", 0)
-            cx  = pad_x + (i * slot_width) + (slot_width / 2)
-            x1  = cx - bar_width / 2
-            x2  = cx + bar_width / 2
+            pct   = d.get("percentual", 0)
+            cx    = pad_x + (i * slot_width) + (slot_width / 2)
+            x1    = cx - bar_width / 2
+            x2    = cx + bar_width / 2
             bar_h = (pct / max_pct) * area_h
-            y1  = y_base - bar_h
-            y2  = y_base
+            y1    = y_base - bar_h
+            y2    = y_base
             rects.append((moeda, x1, y1, x2, y2))
 
         return rects
@@ -154,23 +157,21 @@ class DonutChart(ctk.CTkFrame):
             self.canvas.after_cancel(self._draw_job)
         self._draw_job = self.canvas.after(30, self._desenhar)
 
-    def _barra_arredondada(self, x1: float, y1: float, x2: float, y2: float,
-                            r: float, cor: str) -> None:
-        if y2 - y1 < 2:
+    # ── item 3: gradiente vertical, topo=cor_base, base=60% alpha ──────────
+    def _barra_gradiente(self, x1: float, y1: float, x2: float, y2: float,
+                          cor_base: str) -> None:
+        height = y2 - y1
+        if height < 1:
             return
-        r = max(0, min(r, (x2 - x1) / 2, (y2 - y1) / 2))
-
-        self.canvas.create_rectangle(x1, y1 + r, x2, y2, fill=cor, outline="")
-
-        if r > 0:
-            self.canvas.create_rectangle(x1 + r, y1, x2 - r, y1 + r + 1,
-                                         fill=cor, outline="")
-            self.canvas.create_arc(x1, y1, x1 + 2 * r, y1 + 2 * r,
-                                   start=90, extent=90,
-                                   fill=cor, outline="", style="pieslice")
-            self.canvas.create_arc(x2 - 2 * r, y1, x2, y1 + 2 * r,
-                                   start=0, extent=90,
-                                   fill=cor, outline="", style="pieslice")
+        steps    = _GRADIENT_STEPS
+        step_h   = height / steps
+        for i in range(steps):
+            t     = i / max(steps - 1, 1)        # 0.0 no topo → 1.0 na base
+            alpha = 1.0 - t * 0.40               # 100% topo, 60% base
+            cor   = _alpha_blend(cor_base, BG_CARD, alpha)
+            sy1   = y1 + i * step_h
+            sy2   = sy1 + step_h + 0.5           # leve overlap p/ sem gaps
+            self.canvas.create_rectangle(x1, sy1, x2, sy2, fill=cor, outline="")
 
     def _desenhar(self) -> None:
         self.canvas.delete("all")
@@ -192,7 +193,9 @@ class DonutChart(ctk.CTkFrame):
         n_ativos   = len(self._dados)
         slot_width = (w - 2 * pad_x) / max(n_ativos, 1)
         bar_width  = min(slot_width * 0.68, 56)
-        radius     = min(bar_width * 0.28, 9)
+
+        # ── item 4: grid sólido, cor blendada bem sutil ─────────────────────
+        grid_color = _alpha_blend(BORDER, BG_CARD, 0.30)
 
         n_grid = 4
         for i in range(1, n_grid + 1):
@@ -200,7 +203,7 @@ class DonutChart(ctk.CTkFrame):
             pct_lbl = (i / n_grid) * max_pct
             self.canvas.create_line(
                 pad_x, gy, w - pad_x, gy,
-                fill=BORDER, width=1, dash=(3, 7),
+                fill=grid_color, width=1,
             )
             self.canvas.create_text(
                 pad_x - 6, gy,
@@ -210,27 +213,27 @@ class DonutChart(ctk.CTkFrame):
                 anchor="e",
             )
 
+        # eixo base
+        axis_color = _alpha_blend(TEXT_SECONDARY, BG_CARD, 0.35)
         self.canvas.create_line(
             pad_x, y_base, w - pad_x, y_base,
-            fill=TEXT_SECONDARY, width=1,
+            fill=axis_color, width=1,
         )
 
         for i, (moeda, d) in enumerate(self._dados):
             pct      = d.get("percentual", 0)
             cor_base = self._cor_map.get(moeda, TEXT_MUTED)
 
+            is_selected = self._selected    == moeda
+            is_hovered  = self._hovered_row == moeda
+
+            # cor da barra conforme estado
             if self._selected is not None:
-                if self._selected == moeda:
-                    cor = cor_base
-                else:
-                    cor = _alpha_blend(cor_base, BG_CARD, 0.25)
+                cor = cor_base if is_selected else _alpha_blend(cor_base, BG_CARD, 0.18)
+            elif self._hovered_row is not None:
+                cor = _lighten(cor_base, 0.22) if is_hovered else _alpha_blend(cor_base, BG_CARD, 0.32)
             else:
-                if self._hovered_row is not None and self._hovered_row != moeda:
-                    cor = _alpha_blend(cor_base, BG_CARD, 0.4)
-                elif self._hovered_row == moeda:
-                    cor = _lighten(cor_base, 0.2)
-                else:
-                    cor = cor_base
+                cor = cor_base
 
             cx    = pad_x + (i * slot_width) + (slot_width / 2)
             x1    = cx - bar_width / 2
@@ -240,30 +243,44 @@ class DonutChart(ctk.CTkFrame):
             y2    = y_base
 
             if bar_h > 0:
-                self._barra_arredondada(x1, y1, x2, y2, radius, cor)
+                # ── item 1: barra reta (sem arredondamento) + gradiente ────
+                self._barra_gradiente(x1, y1, x2, y2, cor)
+
+                # ── item 5: linha de acento no topo ao selecionar ──────────
+                if is_selected:
+                    self.canvas.create_line(
+                        x1, y1, x2, y1,
+                        fill=cor_base, width=2,
+                    )
+                elif is_hovered and self._selected is None:
+                    self.canvas.create_line(
+                        x1, y1, x2, y1,
+                        fill=_lighten(cor_base, 0.35), width=1,
+                    )
 
             if slot_width >= 25:
-                txt_color_moeda = TEXT_SECONDARY
-                txt_color_pct   = TEXT_PRIMARY
-
-                if self._selected is not None and self._selected != moeda:
-                    txt_color_moeda = TEXT_MUTED
-                    txt_color_pct   = TEXT_MUTED
-                elif self._hovered_row is not None and self._hovered_row != moeda and self._selected is None:
-                    txt_color_moeda = TEXT_MUTED
-                    txt_color_pct   = TEXT_MUTED
+                # ── item 6: label fixo no pad inferior (não segue a barra) ─
+                if self._selected is not None and not is_selected:
+                    txt_moeda = _alpha_blend(TEXT_MUTED, BG_CARD, 0.45)
+                    txt_pct   = _alpha_blend(TEXT_MUTED, BG_CARD, 0.45)
+                elif self._hovered_row is not None and not is_hovered and self._selected is None:
+                    txt_moeda = _alpha_blend(TEXT_MUTED, BG_CARD, 0.45)
+                    txt_pct   = _alpha_blend(TEXT_MUTED, BG_CARD, 0.45)
+                else:
+                    txt_moeda = TEXT_SECONDARY
+                    txt_pct   = TEXT_PRIMARY
 
                 self.canvas.create_text(
-                    cx, y2 + 16,
+                    cx, y_base + 16,
                     text=moeda.upper(),
-                    fill=txt_color_moeda,
+                    fill=txt_moeda,
                     font=("Segoe UI", 9, "bold"),
                 )
 
                 if pct > 0:
                     self.canvas.create_text(
-                        cx, y1 - 12,
+                        cx, y1 - 10,
                         text=f"{pct:.1f}%",
-                        fill=txt_color_pct,
+                        fill=txt_pct,
                         font=("Segoe UI", 9, "bold"),
                     )

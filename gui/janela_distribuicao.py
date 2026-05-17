@@ -8,6 +8,7 @@ import customtkinter as ctk
 
 from config.donut_chart import DonutChart
 from config.cards_lateral import PainelCards
+from config.carregar_json import _carregar_cores_moedas
 from config.tema_cripto import (
     BG_DEEP, BG_CARD, BTC_ORANGE, NEON_GREEN, NEON_RED, CYAN, YELLOW,
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, BORDER,
@@ -307,14 +308,26 @@ class JanelaDistribuicao(ctk.CTkFrame):
             self._limpar_det_rows()
 
         self._usdt_pl_brl = usdt_pl
-
         distribuicao = dist.get("distribuicao", {})
+
         if distribuicao:
             n_ativos         = len(distribuicao)
             lbl_txt, cor_txt = next((lb, c) for minv, lb, c in _DIVERSIFICACAO if n_ativos >= minv)
             self._lbl_div.configure(text=lbl_txt, text_color=cor_txt)
-            ord_dist = sorted(distribuicao.items(), key=lambda x: x[1]["percentual"], reverse=True)
-            cor_map  = {m: _CORES_ATIVOS[i % len(_CORES_ATIVOS)] for i, (m, _) in enumerate(ord_dist)}
+
+            ord_dist  = sorted(distribuicao.items(), key=lambda x: x[1]["percentual"], reverse=True)
+            cores_cfg = _carregar_cores_moedas()
+
+            fallback_idx = 0
+            cor_map      = {}
+            for m, _ in ord_dist:
+                chave = m.upper().replace(" (CAIXA)", "").strip()
+                if chave in cores_cfg:
+                    cor_map[m] = cores_cfg[chave]
+                else:
+                    cor_map[m] = _CORES_ATIVOS[fallback_idx % len(_CORES_ATIVOS)]
+                    fallback_idx += 1
+
             self.donut_chart.atualizar_dados(ord_dist, cor_map)
         else:
             self._lbl_div.configure(text="--", text_color=TEXT_SECONDARY)
@@ -347,12 +360,12 @@ class JanelaDistribuicao(ctk.CTkFrame):
         cor_retorno = NEON_GREEN if pct_total >= 0 else NEON_RED
 
         self._lbl_patrimonio.configure(text=self._fmt_val(tot_val))
-        self._lbl_custo.configure(text=self._fmt_val(tot_custo))
-        self._lbl_pl_nr.configure(text=self._fmt_val(tot_pl_nr),  text_color=cor_nr)
-        self._lbl_pl_r.configure( text=self._fmt_val(tot_pl_r),   text_color=cor_r)
-        self._lbl_pl.configure(   text=self._fmt_val(tot_pl),     text_color=cor_pl)
-        self._lbl_pct.configure(  text=f"{pct_nr:+.2f}%",         text_color=cor_nr)
-        self._lbl_retorno.configure(text=f"{pct_total:+.2f}%",    text_color=cor_retorno)
+        self._lbl_custo.configure(     text=self._fmt_val(tot_custo))
+        self._lbl_pl_nr.configure(     text=self._fmt_val(tot_pl_nr),  text_color=cor_nr)
+        self._lbl_pl_r.configure(      text=self._fmt_val(tot_pl_r),   text_color=cor_r)
+        self._lbl_pl.configure(        text=self._fmt_val(tot_pl),     text_color=cor_pl)
+        self._lbl_pct.configure(       text=f"{pct_nr:+.2f}%",         text_color=cor_nr)
+        self._lbl_retorno.configure(   text=f"{pct_total:+.2f}%",      text_color=cor_retorno)
 
         moedas_validas = [(m, d) for m, d in ord_port if m != "USDT (Caixa)" and d.get("lucro_total") is not None]
         if moedas_validas:
@@ -371,8 +384,7 @@ class JanelaDistribuicao(ctk.CTkFrame):
             )
         else:
             self._lbl_melhor.configure(text="--")
-            self._lbl_pior.configure(text="--")
-
+            self._lbl_pior.configure(  text="--")
 
     def _inserir_detalhe(self, moeda: str, dados: dict, idx: int):
         qtd     = dados.get("quantidade_final", 0)

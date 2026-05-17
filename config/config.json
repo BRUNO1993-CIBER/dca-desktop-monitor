@@ -11,6 +11,18 @@
         "SUI",
         "USDT"
     ],
+    "cores_moedas": {
+        "ETH": "#627eea",
+        "SOL": "#9945ff",
+        "XRP": "#346aa9",
+        "LINK": "#2a5ada",
+        "BNB": "#f0b90b",
+        "UNI": "#ff007a",
+        "NEAR": "#00c08b",
+        "SUI": "#4da2ff",
+        "USDT": "#26a17b",
+        "BTC": "#ff5406"
+    },
     "exchange": "binance",
     "intervalo_atualizacao": 10,
     "splash_timeout": 30

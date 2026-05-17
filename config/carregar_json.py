@@ -22,3 +22,12 @@ def _carregar_moedas_config() -> list[str]:
     except Exception as e:
         logger.warning(f"Não foi possível carregar config.json: {e}")
         return ["Todas"]
+
+
+def _carregar_cores_moedas() -> dict[str, str]:
+    try:
+        data = _carregar_config()
+        return data.get("cores_moedas", {})
+    except Exception as e:
+        logger.warning(f"Não foi possível carregar cores_moedas do config.json: {e}")
+        return {}        
