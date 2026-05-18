@@ -4,7 +4,7 @@ import customtkinter as ctk
 
 from config.tema_cripto import (
     BG_CARD, NEON_GREEN, NEON_RED, CYAN, YELLOW,
-    TEXT_PRIMARY, TEXT_MUTED, TEXT_SECONDARY, BORDER,
+    TEXT_PRIMARY, TEXT_MUTED, BORDER,
 )
 
 _FONT_NAME      = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
@@ -12,10 +12,10 @@ _F_BADGE        = (_FONT_NAME, 11, "bold")
 _SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
 _ESTADOS = {
-    "conectado":     ("Conectado   🛜",  TEXT_PRIMARY, False),
-    "sincronizando": ("Sincronizando", YELLOW,       True),
-    "offline":       ("Offline   ❌",    NEON_RED,     False),
-    "aguardando":    ("Aguardando...", TEXT_MUTED,   False),
+    "conectado":     ("Conectado 🛜",  NEON_GREEN, False),
+    "sincronizando": ("Sincronizando", YELLOW,     True),
+    "offline":       ("Offline ⚠",    NEON_RED,   False),
+    "aguardando":    ("Aguardando...", TEXT_MUTED, False),
 }
 
 _COR_PARA_ESTADO = {
@@ -40,18 +40,21 @@ class ConexaoBadge(ctk.CTkFrame):
         self._spinner_job = None
         self._spinner_idx = 0
 
+        self._inner = ctk.CTkFrame(self, fg_color="transparent")
+        self._inner.pack(expand=True, padx=(14, 14), pady=5)
+
         self._lbl_texto = ctk.CTkLabel(
-            self, text="Aguardando...", font=_F_BADGE,
+            self._inner, text="Aguardando...", font=_F_BADGE,
             text_color=TEXT_MUTED, fg_color="transparent",
-            width=80, anchor="w",
+            width=130, anchor="center",
         )
-        self._lbl_texto.pack(side="left", padx=(10, 2), pady=5)
+        self._lbl_texto.pack(side="left")
 
         self._lbl_spinner = ctk.CTkLabel(
-            self, text="", font=_F_BADGE,
+            self._inner, text="", font=_F_BADGE,
             text_color=YELLOW, fg_color="transparent", width=16,
         )
-        self._lbl_spinner.pack(side="left", padx=(0, 12), pady=5)
+        self._lbl_spinner.pack(side="left", padx=(4, 0))
 
     def set_estado(self, estado: str):
         if estado not in _ESTADOS:
@@ -64,7 +67,7 @@ class ConexaoBadge(ctk.CTkFrame):
         else:
             self._stop_spinner()
 
-    def set_status(self, mensagem: str, cor: str = TEXT_SECONDARY):
+    def set_status(self, mensagem: str, cor: str = TEXT_MUTED):
         if not mensagem:
             return
         estado_novo = _COR_PARA_ESTADO.get(cor)
