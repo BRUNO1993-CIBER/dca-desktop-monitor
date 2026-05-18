@@ -1,13 +1,12 @@
 import platform
 # pyrefly: ignore [missing-import]
 import customtkinter as ctk
-
 from config.tema_cripto import (
     BG_CARD, NEON_GREEN, NEON_RED, CYAN, YELLOW,
     TEXT_PRIMARY, TEXT_MUTED, BORDER,
 )
 
-_FONT_NAME      = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+_FONT_NAME = "Courier New" if platform.system() == "Windows" else "Monospace"
 _F_BADGE        = (_FONT_NAME, 11, "bold")
 _SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
@@ -26,9 +25,9 @@ _COR_PARA_ESTADO = {
     "#e3b341":  "offline",
 }
 
+_LABEL_W = 125
 
 class ConexaoBadge(ctk.CTkFrame):
-
     def __init__(self, parent, **kwargs):
         kwargs.setdefault("fg_color",      BG_CARD)
         kwargs.setdefault("border_color",  BORDER)
@@ -40,28 +39,24 @@ class ConexaoBadge(ctk.CTkFrame):
         self._spinner_job = None
         self._spinner_idx = 0
 
-        self._inner = ctk.CTkFrame(self, fg_color="transparent")
-        self._inner.pack(expand=True, padx=(14, 14), pady=5)
-
-        self._lbl_texto = ctk.CTkLabel(
-            self._inner, text="Aguardando...", font=_F_BADGE,
-            text_color=TEXT_MUTED, fg_color="transparent",
-            width=80, anchor="center",
+        self._lbl = ctk.CTkLabel(
+            self,
+            text="Aguardando...",
+            font=_F_BADGE,
+            text_color=TEXT_MUTED,
+            fg_color="transparent",
+            width=_LABEL_W,
+            anchor="center",
         )
-        self._lbl_texto.pack(side="left")
+        self._lbl.pack(padx=14, pady=5)
 
-        self._lbl_spinner = ctk.CTkLabel(
-            self._inner, text="", font=_F_BADGE,
-            text_color=YELLOW, fg_color="transparent", width=16,
-        )
-        self._lbl_spinner.pack(side="left", padx=(4, 0))
 
     def set_estado(self, estado: str):
         if estado not in _ESTADOS:
             return
         self._estado = estado
         texto, cor, animar = _ESTADOS[estado]
-        self._lbl_texto.configure(text=texto, text_color=cor)
+        self._lbl.configure(text=texto, text_color=cor)
         if animar:
             self._start_spinner()
         else:
@@ -74,7 +69,8 @@ class ConexaoBadge(ctk.CTkFrame):
         if estado_novo:
             self.set_estado(estado_novo)
         else:
-            self._lbl_texto.configure(text=mensagem, text_color=cor)
+            self._stop_spinner()
+            self._lbl.configure(text=mensagem, text_color=cor)
 
     def set_countdown(self, segundos: int):
         pass
@@ -93,13 +89,13 @@ class ConexaoBadge(ctk.CTkFrame):
         if self._spinner_job is not None:
             self.after_cancel(self._spinner_job)
             self._spinner_job = None
-        self._lbl_spinner.configure(text="")
 
     def _tick(self):
         if self._estado != "sincronizando":
-            self._stop_spinner()
+            self._spinner_job = None  
             return
         frame = _SPINNER_FRAMES[self._spinner_idx % len(_SPINNER_FRAMES)]
-        self._lbl_spinner.configure(text=frame, text_color=YELLOW)
+        texto_base = _ESTADOS["sincronizando"][0]
+        self._lbl.configure(text=f"{texto_base} {frame}")
         self._spinner_idx += 1
         self._spinner_job = self.after(100, self._tick)

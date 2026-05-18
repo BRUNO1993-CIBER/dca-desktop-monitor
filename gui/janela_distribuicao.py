@@ -16,7 +16,7 @@ from config.tema_cripto import (
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, BORDER,
 )
 
-_FONT_NAME = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+_FONT_NAME = "Courier New" if platform.system() == "Windows" else "Monospace"
 
 _F_SECAO   = (_FONT_NAME, 12, "bold")
 _F_TREE    = (_FONT_NAME, 11)
@@ -242,6 +242,7 @@ class JanelaDistribuicao(ctk.CTkFrame):
             usdt_pl   = self._engine.calcular_pl_usdt_brl(ops, self._price_manager.preco_brl)
             dist      = self._engine.calcular_distribuicao_portfolio(ops, self._price_manager.precos_cache)
             self.after(0, lambda: self._atualizar_ui(portfolio, usdt_pl, dist))
+            self.after(0, lambda: self.set_estado("conectado"))  
         except Exception as e:
             self.after(0, lambda: self.set_status("❌ Falha no processamento", NEON_RED))
             self.after(0, lambda: messagebox.showerror("Exceção do Engine", str(e)))

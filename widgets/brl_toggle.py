@@ -4,7 +4,7 @@ from tkinter import messagebox
 # pyrefly: ignore [missing-import]
 import customtkinter as ctk
 
-_FONT = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+_FONT = "Courier New" if platform.system() == "Windows" else "Monospace"
 
 BG_CARD      = "#161b22"
 BTC_ORANGE   = "#f7931a"

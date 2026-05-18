@@ -21,7 +21,7 @@ RED_ALERT     = "#ff4d4d"
 YELLOW_WARN   = "#e3b341"
 BORDER_SUBTLE = "#2a2d3e"
 
-_FONT         = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+_FONT = "Courier New" if platform.system() == "Windows" else "Monospace"
 _F_TITULO     = (_FONT, 18, "bold")
 _F_STATUS     = (_FONT, 11)
 _F_BADGE      = (_FONT, 11, "bold")

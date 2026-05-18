@@ -13,7 +13,8 @@ from widgets.combo_custom import ComboCustom
 
 ctk.set_appearance_mode("dark")
 
-_FONT_NAME    = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+_FONT_NAME = "Courier New" if platform.system() == "Windows" else "Monospace"
+
 _F_BADGE      = (_FONT_NAME, 11, "bold")
 _F_SECAO      = (_FONT_NAME, 12, "bold")
 _F_CARD_TITLE = (_FONT_NAME, 11, "bold")

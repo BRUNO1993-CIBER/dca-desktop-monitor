@@ -9,7 +9,7 @@ import customtkinter as ctk
 
 from widgets.brl_toggle import BRLToggle  
 
-_FONT = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+_FONT = "Courier New" if platform.system() == "Windows" else "Monospace"
 
 _F_STATUS     = (_FONT, 11)
 _F_BADGE      = (_FONT, 11, "bold")

@@ -32,7 +32,7 @@ from config.carregar_json import _carregar_config
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-_FONT = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+_FONT = "Courier New" if platform.system() == "Windows" else "Monospace"
 
 CONFIG            = _carregar_config()
 MOEDAS_SUPORTADAS = CONFIG["moedas"]

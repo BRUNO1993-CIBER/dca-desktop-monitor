@@ -3,11 +3,10 @@ import platform
 import customtkinter as ctk
 from typing import Callable, List, Optional
 
-_FONT_NAME = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
+_FONT_NAME = "Courier New" if platform.system() == "Windows" else "Monospace"
 _F_TREE    = (_FONT_NAME, 11)
 _F_ARROW   = (_FONT_NAME, 10)
 _IS_LINUX  = platform.system() == "Linux"
-
 
 class ComboCustom(ctk.CTkFrame):
 

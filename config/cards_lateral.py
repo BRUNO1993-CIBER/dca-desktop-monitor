@@ -1,3 +1,4 @@
+import math
 import platform
 import tkinter as tk
 # pyrefly: ignore [missing-import]
@@ -7,14 +8,16 @@ from config.tema_cripto import (
     TEXT_SECONDARY, TEXT_MUTED, BORDER,
 )
 
-_FONT_NAME  = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
-_F_TITLE    = (_FONT_NAME, 10, "bold")
-_F_SUBTITLE = (_FONT_NAME, 9)
-_F_VALUE    = (_FONT_NAME, 12, "bold")
-_F_VALUE_SM = (_FONT_NAME, 10, "bold")
+import platform
 
-_ACCENT_W   = 3
-_SEP_H      = 1
+_FONT_MONO = "Courier New" if platform.system() == "Windows" else "Monospace"
+_F_TITLE    = (_FONT_MONO, 10, "bold")
+_F_SUBTITLE = (_FONT_MONO, 9)
+_F_VALUE    = (_FONT_MONO, 12, "bold")
+_F_VALUE_SM = (_FONT_MONO, 10, "bold")
+
+_ACCENT_W = 3
+_SEP_H    = 1
 
 
 def _lighten(hex_color: str, factor: float = 0.07) -> str:
@@ -39,9 +42,9 @@ _ITEMS_DEF = [
     ("pl",         "🏁 P/L Total",         "realizado + não realizado", NEON_GREEN),
     ("pct",        "📊 Ganho %",           "P/L NR ÷ custo total",      NEON_GREEN),
     ("retorno",    "📉 Retorno Total %",   "P/L total ÷ custo total",   NEON_GREEN),
-    ("div",        "🎯 Diversificação",    "ativos distintos",           TEXT_SECONDARY),
-    ("melhor",     "🏆 Melhor Ativo",      "maior P/L total",            NEON_GREEN),
-    ("pior",       "💀 Pior Ativo",        "menor P/L total",            NEON_RED),
+    ("div",        "🎯 Diversificação",    "ativos distintos",          TEXT_SECONDARY),
+    ("melhor",     "🏆 Melhor Ativo",      "maior P/L total",           NEON_GREEN),
+    ("pior",       "💀 Pior Ativo",        "menor P/L total",           NEON_RED),
 ]
 
 
@@ -51,33 +54,68 @@ def _sep(parent: tk.Widget) -> None:
     c.pack(fill="x")
 
 
-def _footer(parent: tk.Widget) -> None:
-    """Canvas decorativo com símbolo ₿ watermark e linhas de grade."""
-    c = tk.Canvas(parent, height=90, bg=BG_CARD,
-                  highlightthickness=0, bd=0)
-    c.pack(fill="x", pady=(4, 0))
+class _BtcFooter:
+    _INTERVAL = 100
 
-    def _draw(event=None):
+    def __init__(self, parent: tk.Widget):
+        self._phase = 0.0
+        self._after_id = None
+        self._ativo = True
+
+        self.canvas = tk.Canvas(parent, height=90, bg=BG_CARD,
+                                highlightthickness=0, bd=0)
+        self.canvas.pack(fill="x", pady=(4, 0))
+        self.canvas.bind("<Configure>", lambda e: self._draw())
+        self.canvas.after(50, self._tick)
+
+    def _draw(self):
+        c = self.canvas
         c.delete("all")
         w = c.winfo_width() or 260
         h = 90
+        cx, cy = w // 2, h // 2
+
+        glow = 0.5 + 0.5 * math.sin(self._phase)
+
+        for i, r_off in enumerate((26, 18, 10)):
+            intensity = glow * (55 - i * 14)
+            r_val = min(255, int(intensity * 4))
+            g_val = min(255, int(intensity * 2))
+            cor   = f"#{r_val:02x}{g_val:02x}00"
+            c.create_oval(
+                cx - r_off, cy - r_off, cx + r_off, cy + r_off,
+                outline=cor, width=max(1, 3 - i),
+            )
 
         for i in range(1, 4):
             y = int(h * i / 4)
             c.create_line(0, y, w, y, fill=BORDER, width=1, dash=(2, 8))
 
         c.create_text(
-            w // 2, h // 2 - 1,
+            cx, cy,
             text="₿",
-            font=(_FONT_NAME, 52, "bold"),
-            fill=_lighten(BG_CARD, 0.18),
+            font=(_FONT_MONO, 36, "bold"),
+            fill=_lighten(BG_CARD, 0.22),
             anchor="center",
         )
 
         c.create_line(0, h - 1, w, h - 1, fill=BTC_ORANGE, width=1)
 
-    c.bind("<Configure>", lambda e: _draw())
-    c.after(50, _draw)
+    def _tick(self):
+        if not self._ativo:
+            return
+        self._phase = (self._phase + 0.07) % (2 * math.pi)
+        self._draw()
+        self._after_id = self.canvas.after(self._INTERVAL, self._tick)
+
+    def parar(self):
+        self._ativo = False
+        if self._after_id is not None:
+            try:
+                self.canvas.after_cancel(self._after_id)
+            except Exception:
+                pass
+            self._after_id = None
 
 
 class PainelCards(ctk.CTkScrollableFrame):
@@ -91,6 +129,7 @@ class PainelCards(ctk.CTkScrollableFrame):
             **kwargs,
         )
         self._labels: dict[str, ctk.CTkLabel] = {}
+        self._footer_anim: _BtcFooter | None = None
         self._build()
 
     def _build(self) -> None:
@@ -98,7 +137,7 @@ class PainelCards(ctk.CTkScrollableFrame):
             self._labels[key] = self._criar_item(titulo, subtitulo, cor_val, key in ("melhor", "pior"))
             if idx < len(_ITEMS_DEF) - 1:
                 _sep(self)
-        _footer(self)
+        self._footer_anim = _BtcFooter(self)
 
     def _criar_item(self, titulo: str, subtitulo: str, cor_val: str, small: bool) -> ctk.CTkLabel:
         outer = ctk.CTkFrame(self, fg_color=_BG_ROW, corner_radius=0, cursor="hand2")
@@ -114,7 +153,7 @@ class PainelCards(ctk.CTkScrollableFrame):
 
         ctk.CTkLabel(
             outer, text=titulo, font=_F_TITLE,
-            text_color=TEXT_SECONDARY, fg_color="transparent", anchor="w", cursor ="hand2",
+            text_color=TEXT_SECONDARY, fg_color="transparent", anchor="w", cursor="hand2",
         ).grid(row=0, column=1, sticky="w", padx=(10, 4), pady=(6, 0))
 
         lbl = ctk.CTkLabel(
