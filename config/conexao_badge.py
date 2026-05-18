@@ -46,7 +46,7 @@ class ConexaoBadge(ctk.CTkFrame):
         self._lbl_texto = ctk.CTkLabel(
             self._inner, text="Aguardando...", font=_F_BADGE,
             text_color=TEXT_MUTED, fg_color="transparent",
-            width=130, anchor="center",
+            width=80, anchor="center",
         )
         self._lbl_texto.pack(side="left")
 
