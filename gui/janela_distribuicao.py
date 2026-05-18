@@ -1,37 +1,36 @@
 import platform
 import tkinter as tk
 from tkinter import messagebox
-from typing import Optional, Callable
 import threading
+
 # pyrefly: ignore [missing-import]
 import customtkinter as ctk
 
 from config.donut_chart import DonutChart
 from config.cards_lateral import PainelCards
 from config.carregar_json import _carregar_cores_moedas
+from config.conexao_badge import ConexaoBadge
+from widgets.brl_toggle import BRLToggle
 from config.tema_cripto import (
-    BG_DEEP, BG_CARD, BTC_ORANGE, NEON_GREEN, NEON_RED, CYAN, YELLOW,
+    BG_DEEP, BG_CARD, NEON_GREEN, NEON_RED, CYAN, YELLOW,
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, BORDER,
 )
 
 _FONT_NAME = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
 
-_F_BADGE      = (_FONT_NAME, 11, "bold")
-_F_SECAO      = (_FONT_NAME, 12, "bold")
-_F_TREE       = (_FONT_NAME, 11)
-
+_F_SECAO   = (_FONT_NAME, 12, "bold")
+_F_TREE    = (_FONT_NAME, 11)
 _FONT      = (_FONT_NAME, 11, "bold")
 _FONT_HEAD = (_FONT_NAME, 11, "bold")
-_SEL_BG    = "#1A3A5C"
-_SEL_GLOW  = "#4A9EFF"
-_HOVER_BG  = "#1E2D3D"
 
-_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+_SEL_BG   = "#1A3A5C"
+_SEL_GLOW = "#4A9EFF"
+_HOVER_BG = "#1E2D3D"
 
 _CORES_ATIVOS   = ["#f7931a", "#58a6ff", "#00ff88", "#e3b341", "#a371f7",
                    "#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ff9ff3"]
 _DIVERSIFICACAO = [(7, "🟢 Excelente", NEON_GREEN), (4, "🟡 Moderada", YELLOW),
-                   (2, "🟠 Baixa", BTC_ORANGE), (0, "🔴 Mínima", NEON_RED)]
+                   (2, "🟠 Baixa", "#e3b341"),       (0, "🔴 Mínima",  NEON_RED)]
 
 _DET_COLS = (
     "Ativo", "Posição", "Preço Médio", "Preço Mercado",
@@ -44,8 +43,10 @@ _ALINHAMENTOS = ["w", "w", "w", "w", "w", "w", "w", "w", "w", "w"]
 
 
 class JanelaDistribuicao(ctk.CTkFrame):
-    def __init__(self, parent, data_manager, price_manager, analysis_engine, on_change: Optional[Callable] = None):
+
+    def __init__(self, parent, data_manager, price_manager, analysis_engine, on_change=None):
         super().__init__(parent, fg_color="transparent")
+
         self._data_manager  = data_manager
         self._price_manager = price_manager
         self._engine        = analysis_engine
@@ -54,18 +55,21 @@ class JanelaDistribuicao(ctk.CTkFrame):
         self.display_currency = "USD"
         self.brl_toggle_var   = tk.BooleanVar(value=False)
 
-        self._estado_conexao = "offline"
-        self._countdown_seg  = 0
-        self._spinner_job    = None
-        self._spinner_idx    = 0
-
-        self._det_rows: list = []
-        self._det_sel: Optional[ctk.CTkFrame] = None
-        self._det_hover: Optional[ctk.CTkFrame] = None
+        self._det_rows      = []
+        self._det_sel       = None
+        self._det_hover     = None
         self._det_scroll_fn = None
 
         self._build_ui()
 
+    def set_estado(self, estado: str):
+        self._badge.set_estado(estado)
+
+    def set_status(self, mensagem: str, cor: str = TEXT_SECONDARY):
+        self._badge.set_status(mensagem, cor)
+
+    def set_countdown(self, segundos: int):
+        self._badge.set_countdown(segundos)
 
     def _build_ui(self):
         self.pack(fill="both", expand=True, padx=10, pady=(3, 10))
@@ -73,42 +77,20 @@ class JanelaDistribuicao(ctk.CTkFrame):
         toolbar = ctk.CTkFrame(self, fg_color="transparent")
         toolbar.pack(fill="x", pady=(2, 2))
 
-        self.badge_conexao = ctk.CTkFrame(
-            toolbar, fg_color=BG_CARD, border_color=BORDER, border_width=1, corner_radius=8,
+        self._badge = ConexaoBadge(toolbar)
+        self._badge.pack(side=tk.LEFT, padx=(6, 5))
+
+        self._brl_toggle = BRLToggle(
+            toolbar,
+            price_manager=self._price_manager,
+            on_change=self._on_currency_change,
         )
-        self.badge_conexao.pack(side=tk.LEFT, padx=(6, 5))
-
-        ctk.CTkCheckBox(
-            toolbar, text="Exibir em BRL", variable=self.brl_toggle_var,
-            command=self.toggle_currency,
-            fg_color=BTC_ORANGE, hover_color="#e8820f", border_color=BORDER,
-            text_color=TEXT_PRIMARY, checkmark_color=BG_DEEP, font=_F_BADGE,
-            cursor="hand2",
-        ).pack(side=tk.LEFT, padx=(10, 0), pady=5)
-
-        self.lbl_badge_icon = ctk.CTkLabel(
-            self.badge_conexao, text="🟢", font=_F_BADGE,
-            text_color=NEON_GREEN, fg_color="transparent",
-        )
-        self.lbl_badge_icon.pack(side=tk.LEFT, padx=(10, 4), pady=5)
-
-        self.lbl_badge_spinner = ctk.CTkLabel(
-            self.badge_conexao, text="", font=_F_BADGE,
-            text_color=YELLOW, fg_color="transparent", width=16,
-        )
-        self.lbl_badge_spinner.pack(side=tk.LEFT, padx=(0, 4), pady=5)
-
-        self.lbl_badge_texto = ctk.CTkLabel(
-            self.badge_conexao, text="Conectado à Binance", font=_F_BADGE,
-            text_color=TEXT_PRIMARY, fg_color="transparent",
-        )
-        self.lbl_badge_texto.pack(side=tk.LEFT, padx=(0, 12), pady=5)
-
+        self._brl_toggle.pack(side=tk.LEFT, padx=(10, 0), pady=5)
 
         content = ctk.CTkFrame(self, fg_color="transparent")
         content.pack(fill="both", expand=True)
-        content.columnconfigure(0, weight=1)  
-        content.columnconfigure(1, weight=3)  
+        content.columnconfigure(0, weight=1)
+        content.columnconfigure(1, weight=3)
         content.rowconfigure(0, weight=1)
 
         def _secao(parent, titulo: str, center: bool = False):
@@ -145,8 +127,8 @@ class JanelaDistribuicao(ctk.CTkFrame):
         right = ctk.CTkFrame(content, fg_color="transparent")
         right.grid(row=0, column=1, sticky="nsew", padx=(0, 5), pady=(4, 0))
         right.columnconfigure(0, weight=1)
-        right.rowconfigure(0, weight=2)   
-        right.rowconfigure(1, weight=3)   
+        right.rowconfigure(0, weight=2)
+        right.rowconfigure(1, weight=3)
 
         donut_outer, donut_inner = _secao(right, " Gráfico de Distribuição e Alocação ")
         donut_outer.grid(row=0, column=0, sticky="nsew", pady=(0, 6))
@@ -158,10 +140,8 @@ class JanelaDistribuicao(ctk.CTkFrame):
 
         header = ctk.CTkFrame(detalhe_inner, fg_color=BG_DEEP, corner_radius=6)
         header.pack(fill="x", padx=(4, 16), pady=(0, 2))
-
         for i in range(_N):
             header.columnconfigure(i, weight=1, uniform="tabela_col")
-
         for i, (txt, anchor) in enumerate(zip(_DET_COLS, _ALINHAMENTOS)):
             ctk.CTkLabel(
                 header, text=txt, font=_FONT_HEAD,
@@ -176,9 +156,7 @@ class JanelaDistribuicao(ctk.CTkFrame):
         )
         self._det_scroll.pack(fill="both", expand=True)
         self._det_scroll.columnconfigure(0, weight=1)
-
         self._bind_det_scroll(self._det_scroll)
-
 
     def _bind_det_scroll(self, frame: ctk.CTkScrollableFrame):
         canvas = frame._parent_canvas
@@ -190,8 +168,8 @@ class JanelaDistribuicao(ctk.CTkFrame):
                 canvas.yview_scroll(1, "units")
 
         for w in (frame, canvas):
-            w.bind("<Button-4>", _scroll, add="+")
-            w.bind("<Button-5>", _scroll, add="+")
+            w.bind("<Button-4>",   _scroll, add="+")
+            w.bind("<Button-5>",   _scroll, add="+")
             w.bind("<MouseWheel>", _scroll, add="+")
         self._det_scroll_fn = _scroll
 
@@ -203,7 +181,6 @@ class JanelaDistribuicao(ctk.CTkFrame):
         widget.bind("<MouseWheel>", self._det_scroll_fn, add="+")
         for child in widget.winfo_children():
             self._bind_det_scroll_row(child)
-
 
     def _toggle_det_sel(self, row: ctk.CTkFrame):
         if getattr(row, '_eh_vazio', False):
@@ -225,7 +202,6 @@ class JanelaDistribuicao(ctk.CTkFrame):
             return
         row.configure(fg_color=_HOVER_BG if entering else row._bg_normal)
 
-
     def _fmt_val(self, val):
         if self.display_currency == "BRL":
             taxa = self._price_manager.preco_brl
@@ -240,7 +216,6 @@ class JanelaDistribuicao(ctk.CTkFrame):
                 return f"R${val * taxa:,.4f}"
         return f"${val:,.4f}"
 
-
     def _resetar_cards(self):
         for lbl in (
             self._lbl_patrimonio, self._lbl_custo, self._lbl_pl_nr,
@@ -249,16 +224,9 @@ class JanelaDistribuicao(ctk.CTkFrame):
         ):
             lbl.configure(text="--")
 
-
-    def toggle_currency(self):
-        self.display_currency = "BRL" if self.brl_toggle_var.get() else "USD"
-        taxa = self._price_manager.preco_brl
-        if self.display_currency == "BRL" and (taxa is None or taxa <= 0):
-            messagebox.showwarning("Aviso de Sistema", "Cotação do BRL indisponível. Revertendo para USD.")
-            self.display_currency = "USD"
-            self.brl_toggle_var.set(False)
+    def _on_currency_change(self, currency: str):
+        self.display_currency = currency
         self.atualizar()
-
 
     def atualizar(self):
         self.set_status("🔄 Calculando P&L...", CYAN)
@@ -433,7 +401,7 @@ class JanelaDistribuicao(ctk.CTkFrame):
             ]
             pos = pl_tot >= 0
 
-        cor_pl    = NEON_GREEN if pos else NEON_RED
+        cor_pl     = NEON_GREEN if pos else NEON_RED
         _col_cores = [
             TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_MUTED,
             TEXT_SECONDARY, TEXT_PRIMARY, cor_pl, cor_pl, cor_pl, cor_pl,
@@ -475,59 +443,3 @@ class JanelaDistribuicao(ctk.CTkFrame):
             row.bind("<Leave>",    lambda e, r=row: self._hover_det(r, False))
             self._bind_det_scroll_row(row)
             self._det_rows.append(row)
-
-
-    def _render_badge(self):
-        if self._estado_conexao == "conectado":
-            icon, cor, txt = "🟢", NEON_GREEN, "Conectado à Binance"
-            self._stop_spinner()
-        elif self._estado_conexao == "sincronizando":
-            icon, cor, txt = "🟡", YELLOW, "Sincronizando"
-            self._start_spinner()
-        elif self._estado_conexao == "offline":
-            icon, cor, txt = "🔴", NEON_RED, "API Binance Offline"
-            self._stop_spinner()
-        else:
-            icon, cor, txt = "⚪", TEXT_MUTED, "—"
-            self._stop_spinner()
-        self.lbl_badge_icon.configure(text=icon, text_color=cor)
-        self.lbl_badge_texto.configure(text=txt, text_color=TEXT_PRIMARY)
-
-    def _start_spinner(self):
-        if self._spinner_job is not None:
-            return
-        self._spinner_idx = 0
-        self._tick_spinner()
-
-    def _stop_spinner(self):
-        if self._spinner_job is not None:
-            self.after_cancel(self._spinner_job)
-            self._spinner_job = None
-        self.lbl_badge_spinner.configure(text="")
-
-    def _tick_spinner(self):
-        if self._estado_conexao != "sincronizando":
-            self._stop_spinner()
-            return
-        self.lbl_badge_spinner.configure(text=_SPINNER_FRAMES[self._spinner_idx % len(_SPINNER_FRAMES)])
-        self._spinner_idx += 1
-        self._spinner_job = self.after(100, self._tick_spinner)
-
-
-    def set_estado(self, estado: str) -> None:
-        self._estado_conexao = estado
-        self._render_badge()
-
-    def set_countdown(self, segundos: int) -> None:
-        self._countdown_seg = max(0, segundos)
-        self._render_badge()
-
-    def set_status(self, mensagem: str, cor: str = TEXT_SECONDARY) -> None:
-        if not mensagem:
-            return
-        if cor in (NEON_RED, "#ff4d4d", "#e3b341"):
-            self.set_estado("offline")
-        elif cor == CYAN:
-            self.set_estado("sincronizando")
-        elif cor == NEON_GREEN:
-            self.set_estado("conectado")

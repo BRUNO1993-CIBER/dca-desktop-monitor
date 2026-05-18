@@ -7,6 +7,8 @@ from datetime import datetime
 # pyrefly: ignore [missing-import]
 import customtkinter as ctk
 
+from widgets.brl_toggle import BRLToggle  
+
 _FONT = "Segoe UI" if platform.system() == "Windows" else "Ubuntu"
 
 _F_STATUS     = (_FONT, 11)
@@ -68,9 +70,8 @@ class JanelaCaixa(ctk.CTkFrame):
         self._data_manager  = data_manager
         self._price_manager = price_manager
         self._engine        = analysis_engine
-        self.display_currency  = "USD"
-        self.brl_toggle_var    = tk.BooleanVar(value=False)
-        self._cards            = {}
+        self.display_currency = "USD"
+        self._cards           = {}
         self._build_ui()
         self._bind_tab_select(parent)
 
@@ -133,36 +134,12 @@ class JanelaCaixa(ctk.CTkFrame):
         right = ctk.CTkFrame(parent, fg_color=BG_SURFACE, corner_radius=0)
         right.pack(side=tk.RIGHT, anchor="center")
 
-        toggle_frame = ctk.CTkFrame(
+        self._brl_toggle = BRLToggle(
             right,
-            fg_color=BG_CARD,
-            corner_radius=8,
-            border_width=1,
-            border_color=BORDER,
+            price_manager=self._price_manager,
+            on_change=self._on_currency_change,
         )
-        toggle_frame.pack(anchor="e")
-
-        ctk.CTkLabel(
-            toggle_frame,
-            text="Exibir em BRL",
-            font=ctk.CTkFont(*_F_BADGE),
-            text_color=TEXT_PRIMARY, cursor="hand2",
-        ).pack(side=tk.LEFT, padx=(14, 6), pady=10)
-
-        ctk.CTkCheckBox(
-            toggle_frame,
-            text="",
-            variable=self.brl_toggle_var,
-            command=self.toggle_currency,
-            checkbox_width=20,
-            checkbox_height=20,
-            fg_color=BTC_ORANGE,
-            hover_color=NEON_GREEN,
-            border_color=BORDER,
-            corner_radius=4,
-            width=0,
-            cursor="hand2",
-        ).pack(side=tk.LEFT, padx=(0, 14), pady=10)
+        self._brl_toggle.pack(anchor="e")
 
         self.lbl_status = ctk.CTkLabel(
             right,
@@ -172,6 +149,10 @@ class JanelaCaixa(ctk.CTkFrame):
             anchor="e",
         )
         self.lbl_status.pack(anchor="e", pady=(8, 0))
+
+    def _on_currency_change(self, currency: str):
+        self.display_currency = currency
+        self.atualizar()
 
     def _build_cards(self):
         frame = ctk.CTkFrame(self, fg_color=BG_DEEP, corner_radius=0)
@@ -318,15 +299,6 @@ class JanelaCaixa(ctk.CTkFrame):
 
     def _build_accent_divider(self, parent):
         self._accent_bar(parent)
-
-    def toggle_currency(self):
-        self.display_currency = "BRL" if self.brl_toggle_var.get() else "USD"
-        taxa = self._price_manager.preco_brl
-        if self.display_currency == "BRL" and (taxa is None or taxa <= 0):
-            messagebox.showwarning("Aviso", "Cotação do BRL indisponível. Exibindo USD.")
-            self.display_currency = "USD"
-            self.brl_toggle_var.set(False)
-        self.atualizar()
 
     def _fmt_val(self, val):
         if self.display_currency == "BRL":
