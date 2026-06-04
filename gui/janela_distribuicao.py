@@ -76,14 +76,14 @@ class JanelaDistribuicao(ctk.CTkFrame):
         toolbar.pack(fill="x", pady=(2, 2))
 
         self._badge = ConexaoBadge(toolbar)
-        self._badge.pack(side=tk.LEFT, expand=True, fill="x", padx=(6, 4), pady=2)
+        self._badge.pack(side=tk.LEFT, padx=(6, 5), pady=2)
 
         self._brl_toggle = BRLToggle(
             toolbar,
             price_manager=self._price_manager,
             on_change=self._on_currency_change,
         )
-        self._brl_toggle.pack(side=tk.LEFT, expand=True, fill="x", padx=(4, 6), pady=2)
+        self._brl_toggle.pack(side=tk.RIGHT, padx=(5, 6), pady=2)
 
         content = ctk.CTkFrame(self, fg_color="transparent")
         content.pack(fill="both", expand=True)
