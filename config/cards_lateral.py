@@ -1,5 +1,4 @@
 import math
-import platform
 import tkinter as tk
 # pyrefly: ignore [missing-import]
 import customtkinter as ctk
@@ -7,14 +6,13 @@ from config.tema_cripto import (
     BG_CARD, BTC_ORANGE, NEON_GREEN, NEON_RED, CYAN,
     TEXT_SECONDARY, TEXT_MUTED, BORDER,
 )
-
-import platform
-
-_FONT_MONO = "Courier New" if platform.system() == "Windows" else "Monospace"
-_F_TITLE    = (_FONT_MONO, 10, "bold")
-_F_SUBTITLE = (_FONT_MONO, 9)
-_F_VALUE    = (_FONT_MONO, 12, "bold")
-_F_VALUE_SM = (_FONT_MONO, 10, "bold")
+from config.fontes import (
+    F_LATERAL_TITLE  as _F_TITLE,
+    F_LATERAL_SUB    as _F_SUBTITLE,
+    F_LATERAL_VAL    as _F_VALUE,
+    F_LATERAL_VAL_SM as _F_VALUE_SM,
+    F_LATERAL_BTC    as _F_BTC,
+)
 
 _ACCENT_W = 3
 _SEP_H    = 1
@@ -94,7 +92,7 @@ class _BtcFooter:
         c.create_text(
             cx, cy,
             text="₿",
-            font=(_FONT_MONO, 36, "bold"),
+            font=_F_BTC,
             fill=_lighten(BG_CARD, 0.22),
             anchor="center",
         )

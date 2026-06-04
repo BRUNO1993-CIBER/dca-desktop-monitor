@@ -6,6 +6,7 @@ import customtkinter as ctk
 from config.tema_cripto import (
     BG_CARD, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, BORDER
 )
+from config.fontes import F_UI_SMALL as _F_SMALL, F_UI_SMALL_BD as _F_SMALL_BD
 
 
 def _hex_to_rgb(h: str):
@@ -209,7 +210,7 @@ class DonutChart(ctk.CTkFrame):
                 pad_x - 6, gy,
                 text=f"{pct_lbl:.0f}%",
                 fill=TEXT_MUTED,
-                font=("Segoe UI", 8),
+                font=_F_SMALL,
                 anchor="e",
             )
 
@@ -274,7 +275,7 @@ class DonutChart(ctk.CTkFrame):
                     cx, y_base + 16,
                     text=moeda.upper(),
                     fill=txt_moeda,
-                    font=("Segoe UI", 9, "bold"),
+                    font=_F_SMALL_BD,
                 )
 
                 if pct > 0:
@@ -282,5 +283,5 @@ class DonutChart(ctk.CTkFrame):
                         cx, y1 - 10,
                         text=f"{pct:.1f}%",
                         fill=txt_pct,
-                        font=("Segoe UI", 9, "bold"),
+                        font=_F_SMALL_BD,
                     )

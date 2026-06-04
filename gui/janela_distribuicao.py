@@ -1,4 +1,3 @@
-import platform
 import tkinter as tk
 from tkinter import messagebox
 import threading
@@ -15,13 +14,12 @@ from config.tema_cripto import (
     BG_DEEP, BG_CARD, NEON_GREEN, NEON_RED, CYAN, YELLOW,
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, BORDER,
 )
-
-_FONT_NAME = "Courier New" if platform.system() == "Windows" else "Monospace"
-
-_F_SECAO   = (_FONT_NAME, 12, "bold")
-_F_TREE    = (_FONT_NAME, 11)
-_FONT      = (_FONT_NAME, 11, "bold")
-_FONT_HEAD = (_FONT_NAME, 11, "bold")
+from config.fontes import (
+    F_SECAO    as _F_SECAO,
+    F_TREE     as _F_TREE,
+    F_BADGE    as _FONT,
+    F_TREE_HEAD as _FONT_HEAD,
+)
 
 _SEL_BG   = "#1A3A5C"
 _SEL_GLOW = "#4A9EFF"
@@ -78,18 +76,18 @@ class JanelaDistribuicao(ctk.CTkFrame):
         toolbar.pack(fill="x", pady=(2, 2))
 
         self._badge = ConexaoBadge(toolbar)
-        self._badge.pack(side=tk.LEFT, padx=(6, 5))
+        self._badge.pack(side=tk.LEFT, expand=True, fill="x", padx=(6, 4), pady=2)
 
         self._brl_toggle = BRLToggle(
             toolbar,
             price_manager=self._price_manager,
             on_change=self._on_currency_change,
         )
-        self._brl_toggle.pack(side=tk.LEFT, padx=(10, 0), pady=5)
+        self._brl_toggle.pack(side=tk.LEFT, expand=True, fill="x", padx=(4, 6), pady=2)
 
         content = ctk.CTkFrame(self, fg_color="transparent")
         content.pack(fill="both", expand=True)
-        content.columnconfigure(0, weight=1)
+        content.columnconfigure(0, weight=2)
         content.columnconfigure(1, weight=3)
         content.rowconfigure(0, weight=1)
 

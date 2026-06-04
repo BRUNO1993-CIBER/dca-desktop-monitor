@@ -3,6 +3,7 @@
 
 import tkinter as tk
 from tkinter import ttk
+from config.fontes import F_UI_NORMAL, F_UI_BOLD, F_UI_SMALL, F_UI_SMALL_BD
 
 BG_DEEP    = "#0a0e1a"
 BG_SURFACE = "#0d1117"
@@ -40,7 +41,7 @@ def aplicar_tema(janela: tk.Misc) -> ttk.Style:
         troughcolor=BG_INPUT,
         selectbackground=BTC_ORANGE,
         selectforeground=BG_DEEP,
-        font=("Segoe UI", 10),
+        font=F_UI_NORMAL,
         relief="flat",
     )
 
@@ -55,7 +56,7 @@ def aplicar_tema(janela: tk.Misc) -> ttk.Style:
         background=BG_CARD,
         foreground=TEXT_SECONDARY,
         padding=[16, 6],
-        font=("Segoe UI", 10, "bold"),
+        font=F_UI_BOLD,
     )
     style.map("TNotebook.Tab",
         background=[("selected", BG_SURFACE), ("active", BG_INPUT)],
@@ -67,7 +68,7 @@ def aplicar_tema(janela: tk.Misc) -> ttk.Style:
     style.configure("TButton",
         background=BTC_ORANGE,
         foreground=BG_DEEP,
-        font=("Segoe UI", 10, "bold"),
+        font=F_UI_BOLD,
         padding=[12, 6],
         relief="flat",
     )
@@ -135,12 +136,12 @@ def aplicar_tema(janela: tk.Misc) -> ttk.Style:
         foreground=TEXT_PRIMARY,
         fieldbackground=BG_CARD,
         rowheight=26,
-        font=("Segoe UI", 9),
+        font=F_UI_SMALL,
     )
     style.configure("Treeview.Heading",
         background=BG_INPUT,
         foreground=BTC_ORANGE,
-        font=("Segoe UI", 9, "bold"),
+        font=F_UI_SMALL_BD,
     )
     style.map("Treeview",
         background=[("selected", "#1f2d1f")],
@@ -166,6 +167,6 @@ def tag_cores_treeview(tree: ttk.Treeview):
     tree.tag_configure("positivo",  foreground=NEON_GREEN)
     tree.tag_configure("negativo",  foreground=NEON_RED)
     tree.tag_configure("neutro",    foreground=TEXT_SECONDARY)
-    tree.tag_configure("destaque",  foreground=BTC_ORANGE, font=("Segoe UI", 9, "bold"))
+    tree.tag_configure("destaque",  foreground=BTC_ORANGE, font=F_UI_SMALL_BD)
     tree.tag_configure("par",       background=BG_CARD)
     tree.tag_configure("impar",     background="#12171e")

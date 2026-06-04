@@ -1,13 +1,10 @@
-import platform
 # pyrefly: ignore [missing-import]
 import customtkinter as ctk
 from config.tema_cripto import (
     BG_CARD, NEON_GREEN, NEON_RED, CYAN, YELLOW,
     TEXT_PRIMARY, TEXT_MUTED, BORDER,
 )
-
-_FONT_NAME = "Courier New" if platform.system() == "Windows" else "Monospace"
-_F_BADGE        = (_FONT_NAME, 11, "bold")
+from config.fontes import F_BADGE as _F_BADGE
 _SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
 _ESTADOS = {

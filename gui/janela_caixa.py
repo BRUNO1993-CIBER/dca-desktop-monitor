@@ -1,4 +1,3 @@
-import platform
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -7,18 +6,18 @@ from datetime import datetime
 # pyrefly: ignore [missing-import]
 import customtkinter as ctk
 
-from widgets.brl_toggle import BRLToggle  
-
-_FONT = "Courier New" if platform.system() == "Windows" else "Monospace"
-
-_F_STATUS     = (_FONT, 11)
-_F_BADGE      = (_FONT, 11, "bold")
-_F_SECAO      = (_FONT, 12, "bold")
-_F_CARD_TITLE = (_FONT, 11, "bold")
-_F_CARD_SUB   = (_FONT, 10)
-_F_CARD_VAL   = (_FONT, 14, "bold")
-_F_TREE       = (_FONT, 10)
-_F_TREE_HEAD  = (_FONT, 10, "bold")
+from widgets.brl_toggle import BRLToggle
+from config.fontes import (
+    F_STATUS       as _F_STATUS,
+    F_BADGE        as _F_BADGE,
+    F_SECAO        as _F_SECAO,
+    F_CARD_TITLE   as _F_CARD_TITLE,
+    F_CARD_SUB     as _F_CARD_SUB,
+    F_CARD_VAL     as _F_CARD_VAL,
+    F_CARD_DISPLAY as _F_CARD_DISPLAY,
+    F_TREE         as _F_TREE,
+    F_TREE_HEAD    as _F_TREE_HEAD,
+)
 
 BG_DEEP        = "#0a0e1a"
 BG_SURFACE     = "#0d1117"
@@ -116,7 +115,7 @@ class JanelaCaixa(ctk.CTkFrame):
         ctk.CTkLabel(
             left,
             text="CAIXA  ·  USDT",
-            font=ctk.CTkFont(_FONT, 11, "bold"),
+            font=_F_BADGE,
             text_color=TEXT_SECONDARY,
             anchor="w",
         ).pack(anchor="w")
@@ -124,7 +123,7 @@ class JanelaCaixa(ctk.CTkFrame):
         self.lbl_saldo = ctk.CTkLabel(
             left,
             text="Carregando...",
-            font=ctk.CTkFont(_FONT, 34, "bold"),
+            font=_F_CARD_DISPLAY,
             text_color=NEON_GREEN,
             anchor="w",
         )
@@ -144,7 +143,7 @@ class JanelaCaixa(ctk.CTkFrame):
         self.lbl_status = ctk.CTkLabel(
             right,
             text="",
-            font=ctk.CTkFont(_FONT, 11, "normal"),
+            font=_F_STATUS,
             text_color=TEXT_SECONDARY,
             anchor="e",
         )
@@ -174,7 +173,7 @@ class JanelaCaixa(ctk.CTkFrame):
         ctk.CTkLabel(
             frame,
             text=titulo,
-            font=ctk.CTkFont(*_F_CARD_TITLE),
+            font=_F_CARD_TITLE,
             text_color=TEXT_SECONDARY,
             anchor="w",
         ).pack(anchor="w", padx=18, pady=(14, 2))
@@ -182,7 +181,7 @@ class JanelaCaixa(ctk.CTkFrame):
         lbl = ctk.CTkLabel(
             frame,
             text=valor,
-            font=ctk.CTkFont(*_F_CARD_VAL),
+            font=_F_CARD_VAL,
             text_color=cor,
             anchor="w",
         )
@@ -210,7 +209,7 @@ class JanelaCaixa(ctk.CTkFrame):
         ctk.CTkLabel(
             header,
             text="EXTRATO DE MOVIMENTAÇÕES",
-            font=ctk.CTkFont(*_F_SECAO),
+            font=_F_SECAO,
             text_color=TEXT_SECONDARY,
         ).pack(side=tk.LEFT)
 
@@ -288,7 +287,7 @@ class JanelaCaixa(ctk.CTkFrame):
         ctk.CTkLabel(
             self,
             text="Atualização automática ao acessar a aba",
-            font=ctk.CTkFont(_FONT, 11, "normal"),
+            font=_F_STATUS,
             text_color=TEXT_MUTED,
         ).pack(side=tk.BOTTOM, pady=6)
 

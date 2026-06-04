@@ -16,6 +16,14 @@ from config.tema_cripto import (
     BTC_ORANGE, CYAN, TEXT_SECONDARY,
 )
 from config.carregar_json import _carregar_config
+from config.fontes import (
+    F_SPLASH_TITLE as _F_TITLE,
+    F_SPLASH_SUB   as _F_SUB,
+    F_SPLASH_MICRO as _F_MICRO,
+    F_SPLASH_STAT  as _F_STAT,
+    F_SPLASH_HASH  as _F_HASH,
+    F_UI_BTC       as _F_BTC,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +127,7 @@ class _AnimacaoCandles:
             cor   = f"#0a{g_val:02x}12"
             self.canvas.create_text(
                 f["x"], f["y"], text=f["text"],
-                font=("Courier", 8), fill=cor,
+                font=_F_MICRO, fill=cor,
                 anchor="nw", tags="float_hash",
             )
 
@@ -264,14 +272,14 @@ class JanelaSplash:
 
         ctk.CTkLabel(
             inner, text="PORTFOLIO  CRIPTO",
-            font=("Courier New", 22, "bold"),
+            font=_F_TITLE,
             text_color=BTC_ORANGE,
             fg_color="transparent",
         ).pack()
 
         ctk.CTkLabel(
             inner, text="< decentralized asset tracker />",
-            font=("Courier New", 10, "italic"),
+            font=_F_SUB,
             text_color=TEXT_SECONDARY,
             fg_color="transparent",
         ).pack(pady=(2, 14))
@@ -288,12 +296,12 @@ class JanelaSplash:
         def _stat(parent, col, title, value, color) -> ctk.CTkLabel:
             ctk.CTkLabel(
                 parent, text=title,
-                font=("Courier New", 8), text_color=TEXT_SECONDARY,
+                font=_F_MICRO, text_color=TEXT_SECONDARY,
                 fg_color="transparent",
             ).grid(row=0, column=col, sticky="w", padx=8)
             lbl = ctk.CTkLabel(
                 parent, text=value,
-                font=("Courier New", 11, "bold"),
+                font=_F_STAT,
                 text_color=color,
                 fg_color="transparent",
             )
@@ -315,14 +323,14 @@ class JanelaSplash:
 
         ctk.CTkLabel(
             hash_box, text="  TX HASH  >>>",
-            font=("Courier New", 8), text_color=TEXT_SECONDARY,
+            font=_F_MICRO, text_color=TEXT_SECONDARY,
             fg_color="transparent",
         ).pack(anchor="w", padx=10, pady=(7, 2))
 
         self.lbl_hash = ctk.CTkLabel(
             hash_box,
             text=f"0x{_rand_hash(32)}",
-            font=("Courier New", 10),
+            font=_F_HASH,
             text_color="#1c6e30",
             fg_color="transparent",
             wraplength=390,
@@ -331,7 +339,7 @@ class JanelaSplash:
 
         self.lbl_status = ctk.CTkLabel(
             inner, text=self._status_msg,
-            font=("Courier New", 11, "bold"),
+            font=_F_STAT,
             text_color=CYAN,
             fg_color="transparent",
         )
@@ -350,7 +358,7 @@ class JanelaSplash:
         ctk.CTkLabel(
             inner,
             text="Binance API  ·  SHA-256  ·  secp256k1",
-            font=("Courier New", 8),
+            font=_F_MICRO,
             text_color=TEXT_SECONDARY,
             fg_color="transparent",
         ).pack(pady=(10, 0))
@@ -378,7 +386,7 @@ class JanelaSplash:
 
         c.create_text(
             cx, cy, text="₿",
-            font=("Segoe UI", 28, "bold"), fill=BTC_ORANGE,
+            font=_F_BTC, fill=BTC_ORANGE,
         )
 
     def _animar_card(self):

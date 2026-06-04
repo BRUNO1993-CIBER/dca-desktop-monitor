@@ -1,4 +1,3 @@
-import platform
 # pyrefly: ignore [missing-import]
 import customtkinter as ctk
 from typing import Any, Callable, List, Optional
@@ -9,20 +8,19 @@ from config.tema_cripto import (
     BTC_ORANGE, NEON_GREEN, NEON_RED, CYAN, YELLOW,
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED,
 )
+from config.fontes import (
+    F_BADGE      as _F_BADGE,
+    F_SECAO      as _F_SECAO,
+    F_CARD_TITLE as _F_CARD_TITLE,
+    F_CARD_SUB   as _F_CARD_SUB,
+    F_CARD_VAL   as _F_CARD_VAL,
+    F_TREE       as _F_TREE,
+    F_BADGE      as _FONT,
+    F_TREE_HEAD  as _FONT_HEAD,
+)
 from widgets.combo_custom import ComboCustom
 
 ctk.set_appearance_mode("dark")
-
-_FONT_NAME = "Courier New" if platform.system() == "Windows" else "Monospace"
-
-_F_BADGE      = (_FONT_NAME, 11, "bold")
-_F_SECAO      = (_FONT_NAME, 12, "bold")
-_F_CARD_TITLE = (_FONT_NAME, 11, "bold")
-_F_CARD_SUB   = (_FONT_NAME, 10)
-_F_CARD_VAL   = (_FONT_NAME, 14, "bold")
-_F_TREE       = (_FONT_NAME, 11)
-_FONT         = (_FONT_NAME, 11, "bold")
-_FONT_HEAD    = (_FONT_NAME, 11, "bold")
 _SEL_BG       = "#1A3A5C"
 _SEL_GLOW     = "#4A9EFF"
 _HOVER_BG     = "#1E2D3D"

@@ -1,4 +1,3 @@
-import platform
 import tkinter as tk
 from tkinter import ttk, messagebox
 from decimal import Decimal, InvalidOperation
@@ -17,26 +16,20 @@ from config.tema_cripto import (
     TEXT_PRIMARY, TEXT_SECONDARY, BORDER,
     tag_cores_treeview,
 )
+from config.fontes import (
+    F_TITULO     as _F_TITULO,
+    F_STATUS     as _F_STATUS,
+    F_BADGE      as _F_BADGE,
+    F_SECAO      as _F_SECAO,
+    F_CARD_TITLE as _F_CARD_TITLE,
+    F_CARD_SUB   as _F_CARD_SUB,
+    F_CARD_VAL   as _F_CARD_VAL,
+    F_TREE       as _F_TREE,
+    F_TREE_HEAD  as _F_TREE_HEAD,
+    _f,
+)
 
 logger = logging.getLogger(__name__)
-
-_FONT = "Courier New" if platform.system() == "Windows" else "Monospace"
-
-_F_TITULO     = (_FONT, 18, "bold")
-_F_STATUS     = (_FONT, 11)
-_F_BADGE      = (_FONT, 11, "bold")
-_F_SECAO      = (_FONT, 13, "bold")
-_F_CARD_TITLE = (_FONT, 12, "bold")
-_F_CARD_SUB   = (_FONT, 10)
-_F_CARD_VAL   = (_FONT, 15, "bold")
-_F_TREE       = (_FONT, 10)
-_F_TREE_HEAD  = (_FONT, 10, "bold")
-
-
-def _f(t: tuple) -> ctk.CTkFont:
-    weight = "bold"   if "bold"   in t else "normal"
-    slant  = "italic" if "italic" in t else "roman"
-    return ctk.CTkFont(t[0], t[1], weight=weight, slant=slant)
 
 
 class JanelaEdicao(ctk.CTkFrame):
