@@ -72,9 +72,29 @@ Siga os passos abaixo para executar o projeto em sua máquina local.
 
 4.  **Execute a aplicação:**
     ```bash
-    python portfolio_dca.py
+    python main.pyw
     ```
     Na primeira execução, um arquivo chamado `meu_diario_operacoes.csv` será criado automaticamente para armazenar suas transações.
+
+### 🖥️ Criar Atalho no Sistema (Opcional)
+
+Após instalar as dependências, você pode criar um atalho clicável no seu sistema operacional para abrir o app sem precisar do terminal.
+
+Com o ambiente virtual **ativado**, execute:
+
+```bash
+python config/install.py
+```
+
+**Windows** — cria um atalho `.lnk` na Área de Trabalho com o ícone do app:
+- Clique duplo no atalho para abrir
+- Para fixar na barra de tarefas: clique direito no atalho → **Fixar na barra de tarefas**
+
+**Linux** — cria uma entrada `.desktop` no menu de aplicativos (`~/.local/share/applications/`):
+- Procure por **Portfolio DCA Monitor** no menu de aplicativos
+- Para fixar no dock: clique direito → **Adicionar aos favoritos** (GNOME/KDE)
+
+> **Importante:** execute o script com o ambiente virtual ativado para que o atalho aponte para o Python correto com todas as dependências instaladas.
 
 ## 📜 Licença
 
