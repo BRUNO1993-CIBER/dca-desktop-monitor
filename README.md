@@ -37,6 +37,45 @@ Visão geral da interface, mostrando o DASHBOARD >>
 *   **ttkthemes** para modernizar o visual da aplicação.
 *   **CCXT** para integração com a API da Binance e busca de preços.
 
+## 📁 Estrutura do Projeto
+
+```
+dca-desktop-monitor/
+├── main.pyw                        # Ponto de entrada da aplicação
+├── requirements.txt
+├── run_portfolio.sh                # Script de execução (Linux)
+├── backend/
+│   ├── backend.py                  # DataManager, PriceManager, AnalysisEngine
+│   └── tipo_operacao.py            # Enum de tipos de operação
+├── config/
+│   ├── config.json                 # Moedas rastreadas, intervalo de atualização
+│   ├── cards_lateral.py            # Componente de cards laterais
+│   ├── carregar_json.py            # Loader do config.json
+│   ├── conexao_badge.py            # Badge de status de conexão
+│   ├── donut_chart.py              # Widget de gráfico donut (canvas)
+│   ├── fontes.py                   # Fontes com DPI scaling (Windows/Linux)
+│   ├── install.py                  # Criação de atalho no sistema
+│   └── tema_cripto.py              # Constantes de cores e estilos ttk
+├── db/
+│   ├── conversao_usdt_brl.py       # Lógica de conversão de moeda
+│   └── meu_diario_operacoes.csv    # Base de dados local (criado na 1ª execução)
+├── gui/
+│   ├── janela_caixa.py             # Aba: posição USDT e P/L em BRL
+│   ├── janela_distribuicao.py      # Aba: dashboard com donut chart e tabela
+│   ├── janela_edicao.py            # Aba: histórico com edição/exclusão
+│   ├── janela_moedas.py            # Aba: gerenciar moedas rastreadas
+│   ├── janela_registro_logica.py   # Lógica de registro de operações
+│   ├── janela_registro_ui.py       # Layout de registro de operações
+│   └── janela_splash.py            # Tela de splash de carregamento
+├── img/
+│   ├── demo.png
+│   ├── favicon.ico
+│   └── favicon.png
+└── widgets/
+    ├── brl_toggle.py               # Toggle USD/BRL
+    └── combo_custom.py             # Combobox customizado
+```
+
 ## ⚙️ Instalação e Execução
 
 Siga os passos abaixo para executar o projeto em sua máquina local.
