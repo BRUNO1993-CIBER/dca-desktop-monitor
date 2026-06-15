@@ -128,7 +128,7 @@ class JanelaDistribuicao(ctk.CTkFrame):
         right.rowconfigure(0, weight=2)
         right.rowconfigure(1, weight=3)
 
-        donut_outer, donut_inner = _secao(right, " Gráfico de Distribuição e Alocação ")
+        donut_outer, donut_inner = _secao(right, " Performance P/L por Ativo ")
         donut_outer.grid(row=0, column=0, sticky="nsew", pady=(0, 6))
         self.donut_chart = DonutChart(donut_inner)
         self.donut_chart.pack(fill="both", expand=True)
@@ -295,7 +295,15 @@ class JanelaDistribuicao(ctk.CTkFrame):
                     cor_map[m] = _CORES_ATIVOS[fallback_idx % len(_CORES_ATIVOS)]
                     fallback_idx += 1
 
-            self.donut_chart.atualizar_dados(ord_dist, cor_map)
+            pl_map = {}
+            for moeda_pl, dados_pl in portfolio.items():
+                if moeda_pl in ("totais", "USDT (Caixa)"):
+                    continue
+                custo_pl = dados_pl.get("custo_posicao_final", 0)
+                if custo_pl > 0.000001:
+                    pl_map[moeda_pl] = dados_pl.get("lucro_nao_realizado", 0) / custo_pl * 100
+
+            self.donut_chart.atualizar_dados(ord_dist, cor_map, pl_map=pl_map)
         else:
             self._lbl_div.configure(text="--", text_color=TEXT_SECONDARY)
             self.donut_chart.limpar()
