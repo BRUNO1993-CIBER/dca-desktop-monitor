@@ -87,8 +87,8 @@ class JanelaDistribuicao(ctk.CTkFrame):
 
         content = ctk.CTkFrame(self, fg_color="transparent")
         content.pack(fill="both", expand=True)
-        content.columnconfigure(0, weight=3)
-        content.columnconfigure(1, weight=4)
+        content.columnconfigure(0, weight=0, minsize=350)
+        content.columnconfigure(1, weight=1)
         content.rowconfigure(0, weight=1)
 
         def _secao(parent, titulo: str, center: bool = False):

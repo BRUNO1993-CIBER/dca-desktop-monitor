@@ -79,7 +79,7 @@ class PortfolioDCA:
             logger.warning("cursor abas: %s", e)
 
     def _criar_interface(self) -> None:
-        self.janela.minsize(1100, 700)
+        self.janela.minsize(950, 660)
         ctk.set_appearance_mode("dark")
 
         base_dir    = os.path.dirname(os.path.abspath(__file__))
