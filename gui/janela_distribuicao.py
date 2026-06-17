@@ -384,7 +384,7 @@ class JanelaDistribuicao(ctk.CTkFrame):
                         f"R${pl['pmc_brl']:,.4f}",
                         f"R${taxa:,.4f}",
                         f"R${pl['custo_posicao_brl']:,.2f}",
-                        f"R${qtd * taxa:,.2f}",
+                        f"R${pl['valor_atual_brl']:,.2f}",
                         f"R${pl['lucro_nao_realizado_brl']:+,.2f}",
                         f"R${pl['lucro_realizado_brl']:+,.2f}",
                         f"R${pl['lucro_total_brl']:+,.2f}",

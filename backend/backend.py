@@ -413,11 +413,19 @@ class AnalysisEngine:
                 custo_brl       = Decimal('0')
                 pmc_brl         = Decimal('0')
 
-        if quantidade_usdt <= Decimal('0'):
+        # A contagem de quantidade_usdt acima pode divergir do saldo de caixa real
+        # (por causa dos clamps min(...) e do reset quando o saldo zera). O saldo de
+        # caixa é a fonte única da verdade; reconciliamos a posição com ele para que
+        # quantidade, custo, valor atual e P/L fechem com as demais telas em vez de
+        # misturar duas quantidades de USDT diferentes na mesma linha.
+        saldo_real = Decimal(str(AnalysisEngine.calcular_saldo_usdt(operacoes)['saldo_atual']))
+        if saldo_real <= Decimal('0'):
             return None
+        if pmc_brl <= Decimal('0'):
+            pmc_brl = Decimal(str(preco_brl_atual))
 
-        qtd_final   = float(quantidade_usdt)
-        custo_final = float(custo_brl)
+        qtd_final   = float(saldo_real)
+        custo_final = float(saldo_real * pmc_brl)
         valor_atual = qtd_final * preco_brl_atual
         pl_nao_real = valor_atual - custo_final
 
